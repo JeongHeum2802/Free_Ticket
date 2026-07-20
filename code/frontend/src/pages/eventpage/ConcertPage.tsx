@@ -1,11 +1,11 @@
+import SlidePosts from "../../components/SlidePosts";
+import Barnner from "../../components/Banner";
+
+import type { Concert } from "../../types/concert";
+
 import { useState } from "react";
 
-import SlidePosts from "../components/SlidePosts"
-import Barnner from "../components/Banner"
-
-import type { Concert } from "../types/concert"
-
-export default function Homepage() {
+export default function ConcertPage() {
   const [concerts] = useState<Concert[]>([
     {
       id: 1,

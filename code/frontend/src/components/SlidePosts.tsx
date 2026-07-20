@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import type { Concert } from '../types/concert';
 
 export default function SlidePosts() {
-  const [slides] = useState([
+  const [concerts] = useState<Concert[]>([
     {
       id: 1,
       category: 'MUSICAL',
@@ -33,7 +35,7 @@ export default function SlidePosts() {
     }
 
     timerRef.current = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % concerts.length);
     }, 7000);
   };
 
@@ -44,17 +46,17 @@ export default function SlidePosts() {
       if (timerRef.current !== null)
         clearInterval(timerRef.current);
     };
-  }, [slides.length]);
+  }, [concerts.length]);
 
   const handlePrev = () => {
     setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? slides.length - 1 : prevIndex - 1
+      prevIndex === 0 ? concerts.length - 1 : prevIndex - 1
     );
     resetAutoSlide();
   };
 
   const handleNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % concerts.length);
     resetAutoSlide();
   };
 
@@ -66,17 +68,21 @@ export default function SlidePosts() {
   return (
     <div className="relative w-full h-150 bg-[#280f0f] text-white flex items-center justify-center overflow-hidden">
       {/* 배경 이미지 */}
-      {slides.map((slide, index) => (
-        <div
-          key={slide.id}
-          className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${index === currentIndex ? 'opacity-100' : 'opacity-0'
-            }`}
-          style={{
-            backgroundImage: slide.imageUrl
-              ? `url(${slide.imageUrl})`
-              : 'none',
-          }}
-        />
+      {concerts.map((slide, index) => (
+        <Link
+          to={`/ticket/${slide.id}`}
+        >
+          <div
+            key={slide.id}
+            className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${index === currentIndex ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+              }`}
+            style={{
+              backgroundImage: slide.imageUrl
+                ? `url(${slide.imageUrl})`
+                : 'none',
+            }}
+          />
+        </Link>
       ))}
 
       {/* 좌측 이동 버튼 */}
@@ -130,7 +136,7 @@ export default function SlidePosts() {
         `}
       >
         <div className="w-full max-w-200 mx-auto h-0.5 bg-gray-600 flex">
-          {slides.map((_, index) => (
+          {concerts.map((_, index) => (
             <button
               key={index}
               onClick={() => handleSelectSlide(index)}
@@ -165,7 +171,7 @@ export default function SlidePosts() {
       >
         {/* 포스터 목록 */}
         <div className="flex justify-center gap-3 mb-5">
-          {slides.map((slide, index) => (
+          {concerts.map((slide, index) => (
             <button
               key={slide.id}
               onClick={() => handleSelectSlide(index)}
@@ -188,12 +194,12 @@ export default function SlidePosts() {
 
         {/* 현재 슬라이드 번호 */}
         <div className="text-xs font-bold text-gray-300 text-center mb-2">
-          {currentIndex + 1} / {slides.length}
+          {currentIndex + 1} / {concerts.length}
         </div>
 
         {/* 메뉴 안 프로그레스 바 */}
         <div className="w-full max-w-200 mx-auto h-0.5 bg-gray-600 flex">
-          {slides.map((_, index) => (
+          {concerts.map((_, index) => (
             <button
               key={index}
               onClick={() => handleSelectSlide(index)}
