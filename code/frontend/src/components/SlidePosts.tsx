@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
+import type { Concert } from '../types/concert';
 
 export default function SlidePosts() {
-  const [slides] = useState([
+  const [slides] = useState<Concert[]>([
     {
       id: 1,
       category: 'MUSICAL',

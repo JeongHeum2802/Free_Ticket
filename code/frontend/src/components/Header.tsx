@@ -1,13 +1,18 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 
 
 export default function Header() {
   const { isLogin, user } = useAuth();
   const navItems = [
-    '콘서트', '뮤지컬', '연극', '클래식/무용', '전시/스포츠', '버스킹'
-  ];
+    { label: "콘서트", path: "/concert" },
+    { label: "뮤지컬", path: "/musical" },
+    { label: "연극", path: "/play" },
+    { label: "클래식/무용", path: "/classic" },
+    { label: "전시/스포츠", path: "/exhibition" },
+    { label: "버스킹", path: "/busking" },
+  ]
 
   return (
     <header className="w-full bg-[#f6f6f6] border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -25,19 +30,24 @@ export default function Header() {
       {/* 2. 중앙 영역: 네비게이션 링크 */}
       <nav className="flex items-center text-[15px] font-medium text-gray-800">
         {navItems.map((item, index) => (
-          <React.Fragment key={item}>
-            <div className="relative cursor-pointer hover:text-[#ff4b2b] transition-colors whitespace-nowrap">
-              {item}
-              {/* '랭킹' 항목 위의 NEW 뱃지 */}
-              {item === '랭킹' && (
-                <span className="absolute -top-3 -right-6 bg-[#ff4b2b] text-white text-[10px] font-bold px-1 rounded-sm">
-                  NEW
-                </span>
-              )}
-            </div>
-            {/* 메뉴 사이의 구분점 (마지막 항목 제외) */}
+          <React.Fragment key={item.path}>
+            <NavLink
+              to={item.path}
+              className={({ isActive }) =>
+                `
+            relative whitespace-nowrap transition-colors
+            ${isActive
+                  ? "font-bold text-[#453eda]"
+                  : "text-gray-800 hover:text-[#ff4b2b]"
+                }
+          `
+              }
+            >
+              {item.label}
+            </NavLink>
+
             {index < navItems.length - 1 && (
-              <span className="text-gray-300 text-xs px-3">•</span>
+              <span className="px-3 text-xs text-gray-300">•</span>
             )}
           </React.Fragment>
         ))}

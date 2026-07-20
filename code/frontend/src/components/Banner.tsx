@@ -1,10 +1,5 @@
 
-type Concert = {
-  id: number;
-  category: string;
-  imageUrl: string;
-  posterUrl: string;
-}
+import type { Concert } from "../types/concert";
 
 type Props = {
   title?: string;
@@ -13,8 +8,6 @@ type Props = {
 
 export default function Barnner({ title, concerts }: Props) {
   
-
-  const mainConcert = concerts[0];
   const subConcerts = concerts.slice(1);
 
   return (
