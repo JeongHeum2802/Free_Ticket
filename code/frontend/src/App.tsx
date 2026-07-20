@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 // 기본 페이지
 import Homepage from './pages/Homepage';
 import Loginpage from './pages/Loginpage';
+import TicketDetailPage from './pages/TicketDetailPage';
 
 // 마이페이지
 import Mypage from './pages/mypage/Mypage';
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/busking" element={<BuskingPage />} />
 
         <Route path="/login" element={<Loginpage />} />
+        <Route path="/ticket/:id" element={<TicketDetailPage />} />
         <Route
           path="/mypage"
           element={

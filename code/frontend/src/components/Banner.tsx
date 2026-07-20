@@ -1,4 +1,4 @@
-
+import { Link } from "react-router-dom";
 import type { Concert } from "../types/concert";
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
 };
 
 export default function Barnner({ title, concerts }: Props) {
-  
+
   const subConcerts = concerts.slice(1);
 
   return (
@@ -17,17 +17,29 @@ export default function Barnner({ title, concerts }: Props) {
       </header>
 
       <div className="p-7 gap-4 grid grid-cols-5 gird-rows-2">
-        <img
-          src={concerts[0].posterUrl}
-          className="w-full h-full row-span-2 col-span-2"
-        />
+        <Link
+          to={`/ticket/${concerts[0].id}`}
+          className="row-span-2 col-span-2 overflow-hidden"
+        >
+          <img
+            src={concerts[0].posterUrl}
+            alt={`${concerts[0].category} 포스터`}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          />
+        </Link>
         {
           subConcerts.map((concert) => (
-            <img
+            <Link
               key={concert.id}
-              src={concert.posterUrl}
-              className="w-full h-full"
-            />
+              to={`/ticket/${concert.id}`}
+              className="overflow-hidden"
+            >
+              <img
+                src={concert.posterUrl}
+                alt={`${concert.category} 포스터`}
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              />
+            </Link>
           ))
         }
       </div>
