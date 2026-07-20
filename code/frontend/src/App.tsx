@@ -1,9 +1,12 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Pages
 import Homepage from './pages/Homepage';
 import Loginpage from './pages/Loginpage';
-import Mypage from './pages/Mypage';
+import Mypage from './pages/mypage/Mypage';
+import ReservedTickets from './pages/mypage/ReservedTickets';
+import Profile from './pages/mypage/Profile';
+import SellingTickets from './pages/mypage/SellingTickets';
 
 // Components
 import Header from './components/Header';
@@ -22,7 +25,12 @@ export default function App() {
             <ProtectedRoute>
               <Mypage />
             </ProtectedRoute>
-          } />
+          }>
+          <Route index element={<Navigate to="tickets" replace />} />
+          <Route path="tickets" element={<ReservedTickets />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="selling" element={<SellingTickets />} />
+        </Route>
       </Routes>
     </div>
   );

@@ -1,13 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from "../context/AuthContext";
+
 
 export default function Header() {
+  const { isLogin, user } = useAuth();
   const navItems = [
     '콘서트', '뮤지컬', '연극', '클래식/무용', '전시/스포츠', '버스킹'
   ];
 
   return (
-    <header className="w-full bg-[#f6f6f6] border-b border-gray-200 px-6 py-4 flex items-center justify-between min-w-300">
+    <header className="w-full bg-[#f6f6f6] border-b border-gray-200 px-6 py-4 flex items-center justify-between">
 
       {/* 1. 왼쪽 영역: 햄버거 메뉴 & 로고 */}
       <div className="flex items-center space-x-5">
@@ -49,13 +52,22 @@ export default function Header() {
           </svg>
         </button>
         {/* 사람 (마이페이지) 아이콘 */}
-        <Link to="/mypage">
-          <button className="hover:text-gray-700 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
-          </button>
-        </Link>
+        {isLogin ?
+          (<Link to="/mypage">
+            <button className="flex flex-col items-center hover:text-gray-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              <span className="text-xs">{user?.name}</span>
+            </button>
+          </Link>) : (
+            <Link to="/login">
+              <button className="hover:text-gray-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </button>
+            </Link>)}
       </div>
     </header>
   );

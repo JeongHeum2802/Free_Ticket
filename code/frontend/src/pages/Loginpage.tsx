@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Loginpage() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true); // 로그인 회원가입 분리 state
   const { login } = useAuth();
 
@@ -19,6 +21,7 @@ export default function Loginpage() {
       name: "최정흠",
       email: "wjdgma60@gmail.com",
     });
+    navigate('/');
   }
 
   return (
