@@ -23,6 +23,7 @@ public class Ticket {
     private Integer price;
     private Integer total_ticket;
     private Integer sold_ticket;
+    private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")

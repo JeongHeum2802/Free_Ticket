@@ -32,5 +32,12 @@ public class Event {
     private String location;
 
     @Column(nullable = false)
-    private String posterUrl;
+    private String bannerImageUrl;
+
+    @Column(nullable = false)
+    private String mainImageUrl;
+
+    private String category;
+
+    private String description;
 }
