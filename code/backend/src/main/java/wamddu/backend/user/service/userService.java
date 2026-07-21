@@ -2,14 +2,14 @@ package wamddu.backend.user.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import wamddu.backend.user.domain.Role;
-import wamddu.backend.user.domain.User;
-import wamddu.backend.user.domain.signUpRequestDTO;
-import wamddu.backend.user.domain.signUpResponseDTO;
+import wamddu.backend.global.security.JwtProvider;
+import wamddu.backend.user.domain.*;
 import wamddu.backend.user.repository.userRepository;
 
 import java.util.LinkedHashMap;
@@ -21,6 +21,7 @@ public class userService {
 
     private final PasswordEncoder passwordEncoder;
     private final userRepository userRepository;
+    private final JwtProvider jwtProvider;
 
     @Transactional
     public ResponseEntity<Map<String, Object>> signUp(signUpRequestDTO signUpRequestDTO) {
@@ -80,7 +81,7 @@ public class userService {
             user.setRole(Role.USER);
             User savedUser = userRepository.save(user);
 
-            signUpResponseDTO responseUser = new signUpResponseDTO();
+            userResponseDTO responseUser = new userResponseDTO();
             responseUser.setId(savedUser.getId());
             responseUser.setUsername(savedUser.getUsername());
             responseUser.setEmail(savedUser.getEmail());
@@ -96,5 +97,48 @@ public class userService {
             response.put("message", ex.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> login(loginRequestDTO loginRequestDTO) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        User user = userRepository.findByEmail(loginRequestDTO.getEmail());
+
+        if(user == null || passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword())){
+            response.put("code", "INVALID_CREDENTIALS");
+            response.put("message", "이메일 또는 비밀번호가 올바르지 않습니다.");
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        String token = jwtProvider.generateJwtToken(user.getEmail(), user.getRole().name());
+
+        userResponseDTO responseUser = new userResponseDTO();
+        responseUser.setId(user.getId());
+        responseUser.setUsername(user.getUsername());
+        responseUser.setEmail(user.getEmail());
+        responseUser.setPhonenumber(user.getPhonenumber());
+        responseUser.setRole(user.getRole());
+
+        response.put("message", "로그인에 성공했습니다.");
+        response.put("accessToken", token);
+        response.put("tokenType", "Bearer");
+        response.put("expiresIn", 1800);
+        response.put("user", responseUser);
+
+        String refreshToken = jwtProvider.generateRefreshToken(user.getEmail());
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(604800)
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 }

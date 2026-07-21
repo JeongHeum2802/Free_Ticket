@@ -20,4 +20,5 @@ public class userController {
     public ResponseEntity<Map<String,Object>> signUp(@RequestBody signUpRequestDTO requestDTO) {
         return  userService.signUp(requestDTO);
     }
+
 }
