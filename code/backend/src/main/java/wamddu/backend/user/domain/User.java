@@ -27,7 +27,6 @@ public class User {
     @Column(name = "phoneNumber")
     private String phoneNumber;
 
-    //초기값 false (디렉터 X)
-    @Column(name = "director", nullable = false)
-    private Boolean director = false;
+    @Column(name = "role", nullable = false)
+    private Role role = Role.USER;
 }
