@@ -1,7 +1,7 @@
 import SlidePosts from "../../components/SlidePosts";
 import Barnner from "../../components/Banner";
 
-import type { Concert } from "../../types/concert";
+import type { Concert } from "../../types/Concert";
 
 import { useState } from "react";
 

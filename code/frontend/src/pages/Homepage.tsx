@@ -3,7 +3,7 @@ import { useState } from "react";
 import SlidePosts from "../components/SlidePosts"
 import Barnner from "../components/Banner"
 
-import type { Concert } from "../types/concert"
+import type { Concert } from "../types/Concert"
 
 export default function Homepage() {
   const [concerts] = useState<Concert[]>([
