@@ -1,6 +1,8 @@
 package wamddu.backend.global.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,7 +65,9 @@ public class JwtProvider {
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (Exception e) {
+        } catch (ExpiredJwtException ex) {
+            throw ex;
+        } catch (JwtException | IllegalArgumentException ex) {
             return false;
         }
     }

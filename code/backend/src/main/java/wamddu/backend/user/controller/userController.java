@@ -2,10 +2,9 @@ package wamddu.backend.user.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
 import wamddu.backend.user.domain.loginRequestDTO;
 import wamddu.backend.user.domain.signUpRequestDTO;
 import wamddu.backend.user.service.userService;
@@ -31,5 +30,10 @@ public class userController {
     @PostMapping("/api/auth/refresh")
     public ResponseEntity<Map<String,Object>> refresh(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
         return userService.reissueToken(refreshToken);
+    }
+
+    @GetMapping("/api/auth/me")
+    public ResponseEntity<Map<String, Object>> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
+        return userService.getMyInfo(userDetails);
     }
 }

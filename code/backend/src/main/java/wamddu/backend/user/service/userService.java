@@ -6,6 +6,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import wamddu.backend.global.security.JwtProvider;
@@ -180,6 +182,25 @@ public class userService {
         return  ResponseEntity
                 .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> getMyInfo(UserDetails userDetails) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        User user = userRepository.findByEmail(userDetails.getUsername());
+
+        userResponseDTO responseUser = new userResponseDTO();
+        responseUser.setId(user.getId());
+        responseUser.setUsername(user.getUsername());
+        responseUser.setEmail(user.getEmail());
+        responseUser.setPhonenumber(user.getPhonenumber());
+        responseUser.setRole(user.getRole());
+
+        response.put("user" , responseUser);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
                 .body(response);
     }
 }
