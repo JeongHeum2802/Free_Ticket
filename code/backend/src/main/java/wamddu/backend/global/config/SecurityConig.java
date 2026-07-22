@@ -27,6 +27,7 @@ public class SecurityConig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf((csrf) -> csrf.disable())
+                .cors((cors) -> cors.disable())
                 .formLogin((login) -> login.disable())
                 .httpBasic((basic) -> basic.disable())
                 .sessionManagement(
