@@ -84,4 +84,15 @@ public class JwtProvider {
 
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
+
+    public String getEmail(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        String email = claims.getSubject();
+        return email;
+    }
 }

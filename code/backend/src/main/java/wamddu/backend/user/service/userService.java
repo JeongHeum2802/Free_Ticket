@@ -105,7 +105,7 @@ public class userService {
 
         User user = userRepository.findByEmail(loginRequestDTO.getEmail());
 
-        if(user == null || passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword())){
+        if(user == null || !passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword())){
             response.put("code", "INVALID_CREDENTIALS");
             response.put("message", "이메일 또는 비밀번호가 올바르지 않습니다.");
 
@@ -137,6 +137,47 @@ public class userService {
                 .build();
 
         return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> reissueToken(String refreshToken) {
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        if(refreshToken == null) {
+            response.put("code", "REFRESH_TOKEN_NOT_FOUND");
+            response.put("message", "로그인 정보가 없습니다.");
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        if(!jwtProvider.validateToken(refreshToken)) {
+            response.put("code", "INVALID_REFRESH_TOKEN");
+            response.put("message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        String email = jwtProvider.getEmail(refreshToken);
+        User user =  userRepository.findByEmail(email);
+
+        String newToken = jwtProvider.generateJwtToken(user.getEmail(), user.getRole().name());
+        response.put("accessToken", newToken);
+        response.put("tokenType", "Bearer");
+        response.put("expiresIn", 1800);
+
+        String newRefreshToken = jwtProvider.generateRefreshToken(user.getEmail());
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(604800)
+                .build();
+
+        return  ResponseEntity
                 .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
