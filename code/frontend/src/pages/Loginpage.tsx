@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-
-import type { LoginRequest } from '../types/Auth';
+import axios from "axios";
 
 export default function Loginpage() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true); // 로그인 회원가입 분리 state
-  const { login } = useAuth();
+  const [emailInput, setEmailInput] = useState<string>("");
+  const [passwordInput, setPasswordInput] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { login, user } = useAuth();
 
   const handleClickLoginTab = () => {
     setIsLogin(true);
@@ -17,12 +20,31 @@ export default function Loginpage() {
     setIsLogin(false);
   }
 
-  const handleClickLogin = () => {
-    login({
-      email: "wjdgma60@gmail.com",
-      password: "1234",
-    });
-    navigate('/');
+  const handleChangeEmailInput = (value: string): void => {
+    setEmailInput(value);
+  }
+
+  const handleChangePasswordInput = (value: string): void => {
+    setPasswordInput(value);
+  }
+
+  const handleClickLogin = async () => {
+    try {
+      await login({
+        email: emailInput,
+        password: passwordInput,
+      });
+      navigate("/");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        let message = error.response?.data?.message ?? "로그인에 실패했습니다.";
+
+        setErrorMessage(message);
+        return;
+      }
+
+      setErrorMessage("알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    }
   }
 
   const handleClickSignup = () => {
@@ -58,15 +80,21 @@ export default function Loginpage() {
           <input
             type="text"
             placeholder="이메일"
+            value={emailInput}
+            onChange={(e) => handleChangeEmailInput(e.target.value)}
             className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
           />
 
           <input
             type="password"
             placeholder="비밀번호"
+            value={passwordInput}
+            onChange={(e) => handleChangePasswordInput(e.target.value)}
             className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
           />
         </div>
+        {/* 로그인 실패 메세지 */}
+        {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
 
           <div className="mt-5 flex items-center gap-5 text-sm text-gray-600">
             <label className="flex items-center gap-2">
@@ -118,7 +146,7 @@ export default function Loginpage() {
               placeholder="아이디 (유저이름)"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
-            
+
             <input
               type="email"
               name="email"

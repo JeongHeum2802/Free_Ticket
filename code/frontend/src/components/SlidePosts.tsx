@@ -71,6 +71,7 @@ export default function SlidePosts() {
       {concerts.map((slide, index) => (
         <Link
           to={`/ticket/${slide.id}`}
+          key={index}
         >
           <div
             key={slide.id}

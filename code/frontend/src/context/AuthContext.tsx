@@ -27,8 +27,6 @@ type AuthContextType = {
   logout: () => Promise<void>;
 };
 
-
-
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {

@@ -7,13 +7,13 @@ type ProtectedRouteProps = {
 };
 
 function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isLogin, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <div>로딩 중...</div>;
   }
 
-  if (!isLogin) {
+  if (user == null) {
     alert("로그인이 필요한 서비스입니다. 로그인 페이지로 이동합니다."); 
     return <Navigate to="/login" replace />;
   }

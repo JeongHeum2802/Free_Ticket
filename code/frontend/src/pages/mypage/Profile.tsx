@@ -19,12 +19,9 @@ export default function Profile() {
             이름
           </label>
 
-          <input
-            id="name"
-            type="text"
-            defaultValue={user?.name ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
+          <div className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black">
+            {user?.username}
+          </div>
         </div>
 
         <div>
@@ -35,12 +32,9 @@ export default function Profile() {
             이메일
           </label>
 
-          <input
-            id="email"
-            type="email"
-            defaultValue={user?.email ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
+          <div className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black">
+            {user?.email}
+          </div>
         </div>
 
         <div>
@@ -51,12 +45,9 @@ export default function Profile() {
             전화번호
           </label>
 
-          <input
-            id="phone"
-            type="tel"
-            placeholder="010-0000-0000"
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
+          <div className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black">
+            {user?.phonenumber}
+            </div>
         </div>
 
         <button
