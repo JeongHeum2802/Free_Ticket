@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { Concert } from "../types/concert";
+import type { Concert } from "../types/Concert";
 
 type Props = {
   title?: string;

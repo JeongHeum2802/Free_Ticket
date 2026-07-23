@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 
 export default function Header() {
-  const { isLogin, user } = useAuth();
+  const { user } = useAuth();
   const navItems = [
     { label: "콘서트", path: "/concert" },
     { label: "뮤지컬", path: "/musical" },
@@ -62,22 +62,14 @@ export default function Header() {
           </svg>
         </button>
         {/* 사람 (마이페이지) 아이콘 */}
-        {isLogin ?
-          (<Link to="/mypage">
-            <button className="flex flex-col items-center hover:text-gray-700 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
-              <span className="text-xs">{user?.name}</span>
-            </button>
-          </Link>) : (
-            <Link to="/login">
-              <button className="hover:text-gray-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              </button>
-            </Link>)}
+        <Link to="/mypage">
+          <button className="flex flex-col items-center hover:text-gray-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            <span className="text-xs">{user?.username}</span>
+          </button>
+        </Link>
       </div>
     </header>
   );

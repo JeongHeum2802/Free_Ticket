@@ -23,7 +23,7 @@ export default function Mypage() {
               <p className="text-sm text-gray-500">마이페이지</p>
 
               <h2 className="mt-1 text-xl font-bold">
-                {user?.name ?? "사용자"}님
+                {user?.username ?? "사용자"}님
               </h2>
             </div>
 

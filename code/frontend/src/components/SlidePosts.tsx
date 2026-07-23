@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import type { Concert } from '../types/concert';
+import type { Concert } from '../types/Concert';
 
 export default function SlidePosts() {
   const [concerts] = useState<Concert[]>([
@@ -71,6 +71,7 @@ export default function SlidePosts() {
       {concerts.map((slide, index) => (
         <Link
           to={`/ticket/${slide.id}`}
+          key={index}
         >
           <div
             key={slide.id}

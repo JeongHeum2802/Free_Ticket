@@ -1,6 +1,7 @@
 import EventPageLayout from "./EventPageLayout";
 import type { EventPageItem } from "./EventPageTypes";
 
+import type { Concert } from "../../types/Concert";
 const exhibitionEvents: EventPageItem[] = [
   {
     eventid: 301,
