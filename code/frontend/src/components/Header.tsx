@@ -55,12 +55,6 @@ export default function Header() {
 
       {/* 3. 오른쪽 영역: 아이콘 버튼들 */}
       <div className="flex items-center space-x-4 text-gray-400">
-        {/* 돋보기 (검색) 아이콘 */}
-        <button className="hover:text-gray-700 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-        </button>
         {/* 사람 (마이페이지) 아이콘 */}
         <Link to="/mypage">
           <button className="flex flex-col items-center hover:text-gray-700 transition-colors">
