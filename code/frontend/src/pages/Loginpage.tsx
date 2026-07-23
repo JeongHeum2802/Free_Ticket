@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import { signupApi } from "../api/auth";
+
+import type { SignupRequest, SignupResponse } from '../types/Auth';
 
 export default function Loginpage() {
   const navigate = useNavigate();
@@ -10,7 +13,13 @@ export default function Loginpage() {
   const [passwordInput, setPasswordInput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { login, user } = useAuth();
+  const [signUpInputUsername, setSignUpInputUsername] = useState<string>("");
+  const [signUpInputEmail, setSignUpInputEmail] = useState<string>("");
+  const [signUpInputPassword, setSignUpInputPassword] = useState<string>("");
+  const [signUpInputPasswordDetector, setSignUpInputPasswordDetector] = useState<string>("");
+  const [signUpInputPhonenumber, setSignUpInputPhonenumber] = useState<string>("");
+
+  const { login } = useAuth();
 
   const handleClickLoginTab = () => {
     setIsLogin(true);
@@ -20,6 +29,7 @@ export default function Loginpage() {
     setIsLogin(false);
   }
 
+  // 로그인 Input 상태 변화
   const handleChangeEmailInput = (value: string): void => {
     setEmailInput(value);
   }
@@ -28,6 +38,28 @@ export default function Loginpage() {
     setPasswordInput(value);
   }
 
+  // 회원가입 Input 상태변화
+  const handleChangeSignupUsernameInput = (value: string): void => {
+    setSignUpInputUsername(value);
+  }
+
+  const handleChangeSignupEmailInput = (value: string): void => {
+    setSignUpInputEmail(value);
+  }
+
+  const handleChangeSignupPasswordInput = (value: string): void => {
+    setSignUpInputPassword(value);
+  }
+
+  const handleChangeSignupPasswordDetectorInput = (value: string): void => {
+    setSignUpInputPasswordDetector(value);
+  }
+
+  const handleChangeSignupPhonenumberInput = (value: string): void => {
+    setSignUpInputPhonenumber(value);
+  }
+
+  // 로그인
   const handleClickLogin = async () => {
     try {
       await login({
@@ -43,12 +75,34 @@ export default function Loginpage() {
         return;
       }
 
-      setErrorMessage("알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      setErrorMessage("예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
 
-  const handleClickSignup = () => {
-    return null;
+  const handleClickSignup = async () => {
+    if (signUpInputPassword !== signUpInputPasswordDetector) {
+      setErrorMessage("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    try {
+      const data: SignupRequest = {
+        username: signUpInputUsername,
+        password: signUpInputPassword,
+        email: signUpInputEmail,
+        phonenumber: signUpInputPhonenumber,
+      }
+      const response = await signupApi(data);
+
+      alert(response.message);
+      setIsLogin(true);
+      return;
+    } catch (error) {
+      if(axios.isAxiosError(error)) {
+        let message = error.response?.data?.message ?? "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        setErrorMessage(message);
+      }
+    }
   }
 
   return (
@@ -93,8 +147,8 @@ export default function Loginpage() {
             className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
           />
         </div>
-        {/* 로그인 실패 메세지 */}
-        {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
+          {/* 로그인 실패 메세지 */}
+          {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
 
           <div className="mt-5 flex items-center gap-5 text-sm text-gray-600">
             <label className="flex items-center gap-2">
@@ -143,6 +197,8 @@ export default function Loginpage() {
             <input
               type="text"
               name="username"
+              value={signUpInputUsername}
+              onChange={(e) => handleChangeSignupUsernameInput(e.target.value)}
               placeholder="아이디 (유저이름)"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
@@ -150,6 +206,8 @@ export default function Loginpage() {
             <input
               type="email"
               name="email"
+              value={signUpInputEmail}
+              onChange={(e) => handleChangeSignupEmailInput(e.target.value)}
               placeholder="이메일 (예: user@example.com)"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
@@ -157,6 +215,8 @@ export default function Loginpage() {
             <input
               type="password"
               name="password"
+              value={signUpInputPassword}
+              onChange={(e) => handleChangeSignupPasswordInput(e.target.value)}
               placeholder="비밀번호"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
@@ -164,6 +224,8 @@ export default function Loginpage() {
             <input
               type="password"
               name="password_valid"
+              value={signUpInputPasswordDetector}
+              onChange={(e) => handleChangeSignupPasswordDetectorInput(e.target.value)}
               placeholder="비밀번호를 한번 더 입력해 주세요"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
@@ -171,10 +233,14 @@ export default function Loginpage() {
             <input
               type="tel"
               name="phonenumber"
+              value={signUpInputPhonenumber}
+              onChange={(e) => handleChangeSignupPhonenumberInput(e.target.value)}
               placeholder="휴대폰 번호 (- 없이 입력)"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
           </div>
+
+          {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
 
           {/* 약관 동의 (옵션) */}
           <div className="mt-5 flex items-center gap-2 text-sm text-gray-600">
