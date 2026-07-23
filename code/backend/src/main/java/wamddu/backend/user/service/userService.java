@@ -1,12 +1,12 @@
 package wamddu.backend.user.service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,13 +38,13 @@ public class userService {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
-        //사용자 이름 중복 검사
-        if(userRepository.existsByUsername(signUpRequestDTO.getUsername())) {
-            response.put("code", "USERNAME_ALREADY_EXISTS");
-            response.put("message", "이미 사용 중인 사용자 이름입니다.");
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-        }
+//        //사용자 이름 중복 검사
+//        if(userRepository.existsByUsername(signUpRequestDTO.getUsername())) {
+//            response.put("code", "USERNAME_ALREADY_EXISTS");
+//            response.put("message", "이미 사용 중인 사용자 이름입니다.");
+//
+//            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+//        }
 
         //전화번호 중복 검사
         if(userRepository.existsByPhonenumber(signUpRequestDTO.getPhonenumber())) {
@@ -202,5 +202,116 @@ public class userService {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateMyInfo(updateRequestDTO updateRequestDTO, UserDetails userDetails) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        User user = userRepository.findByEmail(userDetails.getUsername());
+
+        if(updateRequestDTO.getEmail() != null){
+            if(userRepository.existsByEmail(updateRequestDTO.getEmail())){
+                response.put("code", "EMAIL_ALREADY_EXISTS");
+                response.put("message", "이미 사용 중인 이메일입니다.");
+
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+
+            user.setEmail(updateRequestDTO.getEmail());
+        }
+
+        if(updateRequestDTO.getPhonenumber() != null){
+            if(userRepository.existsByPhonenumber(updateRequestDTO.getPhonenumber())){
+                response.put("code", "PHONENUMBER_ALREADY_EXISTS");
+                response.put("message", "이미 등록된 전화번호입니다.");
+
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+
+            user.setPhonenumber(updateRequestDTO.getPhonenumber());
+        }
+
+        if(updateRequestDTO.getUsername() != null){
+//            if(userRepository.existsByUsername(updateRequestDTO.getUsername())){
+//                response.put("code", "USERNAME_ALREADY_EXISTS");
+//                response.put("message", "이미 사용 중인 사용자 이름입니다.");
+//
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+//            }
+
+            user.setUsername(updateRequestDTO.getUsername());
+        }
+
+        userRepository.save(user);
+
+        userResponseDTO responseUser = new userResponseDTO();
+        responseUser.setId(user.getId());
+        responseUser.setUsername(user.getUsername());
+        responseUser.setEmail(user.getEmail());
+        responseUser.setPhonenumber(user.getPhonenumber());
+        responseUser.setRole(user.getRole());
+
+        response.put("user" , responseUser);
+        return  ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateMyPassword(updatePasswordRequestDTO requestDTO, UserDetails userDetails) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        User user = userRepository.findByEmail(userDetails.getUsername());
+        if(!passwordEncoder.matches(requestDTO.getOldPassword(), user.getPassword())){
+            response.put("code", "INVALID_CURRENT_PASSWORD");
+            response.put("message", "현재 비밀번호가 올바르지 않습니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        if(passwordEncoder.matches(requestDTO.getNewPassword(), user.getPassword())){
+            response.put("code", "SAME_AS_CURRENT_PASSWORD");
+            response.put("message", "새 비밀번호는 현재 비밀번호와 달라야 합니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        String newPassword = passwordEncoder.encode(requestDTO.getNewPassword());
+        user.setPassword(newPassword);
+        userRepository.save(user);
+
+        response.put("message", "비밀번호가 변경되었습니다.");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> deleteMyAccount(deleteUserRequestDTO deleteUserRequestDTO,
+                                                               UserDetails userDetails,
+                                                               HttpServletResponse httpServletResponse) {
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        User user = userRepository.findByEmail(userDetails.getUsername());
+        if(!passwordEncoder.matches(deleteUserRequestDTO.getPassword(), user.getPassword())){
+            response.put("code", "INVALID_PASSWORD");
+            response.put("message", "비밀번호가 올바르지 않습니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        userRepository.delete(user);
+        response.put("message", "회원 탈퇴가 완료되었습니다.");
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+
+        httpServletResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
