@@ -38,13 +38,13 @@ public class userService {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
-        //사용자 이름 중복 검사
-        if(userRepository.existsByUsername(signUpRequestDTO.getUsername())) {
-            response.put("code", "USERNAME_ALREADY_EXISTS");
-            response.put("message", "이미 사용 중인 사용자 이름입니다.");
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-        }
+//        //사용자 이름 중복 검사
+//        if(userRepository.existsByUsername(signUpRequestDTO.getUsername())) {
+//            response.put("code", "USERNAME_ALREADY_EXISTS");
+//            response.put("message", "이미 사용 중인 사용자 이름입니다.");
+//
+//            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+//        }
 
         //전화번호 중복 검사
         if(userRepository.existsByPhonenumber(signUpRequestDTO.getPhonenumber())) {
@@ -233,12 +233,12 @@ public class userService {
         }
 
         if(updateRequestDTO.getUsername() != null){
-            if(userRepository.existsByUsername(updateRequestDTO.getUsername())){
-                response.put("code", "USERNAME_ALREADY_EXISTS");
-                response.put("message", "이미 사용 중인 사용자 이름입니다.");
-
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-            }
+//            if(userRepository.existsByUsername(updateRequestDTO.getUsername())){
+//                response.put("code", "USERNAME_ALREADY_EXISTS");
+//                response.put("message", "이미 사용 중인 사용자 이름입니다.");
+//
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+//            }
 
             user.setUsername(updateRequestDTO.getUsername());
         }
