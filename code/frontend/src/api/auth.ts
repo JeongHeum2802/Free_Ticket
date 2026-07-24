@@ -6,6 +6,8 @@ import type {
   RefreshResponse,
   SignupRequest,
   SignupResponse,
+  UpdateMyInfoRequest,
+  UpdateMyInfoResponse,
 } from "../types/Auth";
 
 // 로그인 API 
@@ -36,4 +38,11 @@ export async function getMyInfoApi(): Promise<MyInfoResponse> {
 // 로그아웃 API
 export async function logoutApi(): Promise<void> {
   await api.post("/auth/logout");
+}
+
+// 정보수정 API
+export async function updateMyInfo(data: UpdateMyInfoRequest): Promise<UpdateMyInfoResponse> {
+  const response = await api.post("/users/me", data);
+
+  return response.data;
 }

@@ -45,7 +45,7 @@ export default function Mypage() {
 
         {/* 오른쪽 콘텐츠 */}
         <main className="min-w-0 flex-1">
-          <div className="min-h-[500px] rounded-xl bg-white p-8 shadow-sm">
+          <div className="min-h-125 rounded-xl bg-white p-8 shadow-sm">
             <Outlet />
           </div>
         </main>

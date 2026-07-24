@@ -24,6 +24,7 @@ import BuskingPage from './pages/eventpage/BuskingPage';
 //// Components
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+import ProfileModify from './pages/mypage/ProfileModify';
 
 export default function App() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="tickets" element={<ReservedTickets />} />
           <Route path="profile" element={<Profile />} />
           <Route path="selling" element={<SellingTickets />} />
+          <Route path="profileModify" element={<ProfileModify />} />
         </Route>
       </Routes>
     </div>

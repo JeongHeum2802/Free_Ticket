@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { signupApi } from "../api/auth";
 
-import type { SignupRequest, SignupResponse } from '../types/Auth';
+import type { SignupRequest } from '../types/Auth';
 
 export default function Loginpage() {
   const navigate = useNavigate();

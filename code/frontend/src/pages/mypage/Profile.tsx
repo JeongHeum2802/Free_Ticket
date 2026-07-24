@@ -1,4 +1,5 @@
 import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -50,12 +51,12 @@ export default function Profile() {
             </div>
         </div>
 
-        <button
-          type="button"
+        <Link
+          to="../profileModify"
           className="rounded-lg bg-black px-6 py-3 text-white transition-colors hover:bg-gray-800"
         >
           개인정보 수정
-        </button>
+        </Link>
       </div>
     </section>
   );
