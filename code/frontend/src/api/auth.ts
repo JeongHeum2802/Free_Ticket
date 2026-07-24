@@ -10,6 +10,8 @@ import type {
   UpdateMyInfoResponse,
   ResetPasswordRequest,
   ResetPasswordReponse,
+  DeleteAccountRequest,
+  DeleteAccountReponse,
 } from "../types/Auth";
 
 // 로그인 API 
@@ -52,6 +54,15 @@ export async function updateMyInfoApi(data: UpdateMyInfoRequest): Promise<Update
 // 비밀번호 변경 API
 export async function resetPasswordApi(data: ResetPasswordRequest): Promise<ResetPasswordReponse> {
   const response = await api.patch("/users/me/password", data);
+
+  return response.data;
+}
+
+// 회원 탈퇴 API
+export async function deleteAccountApi(data: DeleteAccountRequest): Promise<DeleteAccountReponse> {
+  const response = await api.delete("/users/me", {
+    data,
+  });
 
   return response.data;
 }

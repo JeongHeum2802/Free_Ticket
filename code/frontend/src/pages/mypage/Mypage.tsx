@@ -16,6 +16,7 @@ export default function Mypage() {
       navigate("/", { replace:true });
       await logout();
       alert("로그아웃이 완료되었습니다.");
+      window.location.replace("/");
   }
 
   return (

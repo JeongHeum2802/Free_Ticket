@@ -78,3 +78,12 @@ export type ResetPasswordReponse = {
   code?: string;
   message: string;
 }
+
+export type DeleteAccountRequest = {
+  password: string;
+}
+
+export type DeleteAccountReponse = {
+  code: string;
+  message: string;
+}
