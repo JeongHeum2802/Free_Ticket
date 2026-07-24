@@ -8,6 +8,8 @@ import type {
   SignupResponse,
   UpdateMyInfoRequest,
   UpdateMyInfoResponse,
+  ResetPasswordRequest,
+  ResetPasswordReponse,
 } from "../types/Auth";
 
 // 로그인 API 
@@ -41,8 +43,15 @@ export async function logoutApi(): Promise<void> {
 }
 
 // 정보수정 API
-export async function updateMyInfo(data: UpdateMyInfoRequest): Promise<UpdateMyInfoResponse> {
+export async function updateMyInfoApi(data: UpdateMyInfoRequest): Promise<UpdateMyInfoResponse> {
   const response = await api.post("/users/me", data);
+
+  return response.data;
+}
+
+// 비밀번호 변경 API
+export async function resetPasswordApi(data: ResetPasswordRequest): Promise<ResetPasswordReponse> {
+  const response = await api.patch("/users/me/password", data);
 
   return response.data;
 }

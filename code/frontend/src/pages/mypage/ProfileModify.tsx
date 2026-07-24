@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
 
-import { updateMyInfo } from "../../api/auth";
+import { updateMyInfoApi } from "../../api/auth";
 import type { UpdateMyInfoRequest } from "../../types/Auth";
 
 export default function ProfileModify() {
@@ -66,7 +66,7 @@ export default function ProfileModify() {
         return;
       }
 
-      const data = await updateMyInfo(requestData);
+      const data = await updateMyInfoApi(requestData);
 
       setUser(data.user);
       alert(data.message);

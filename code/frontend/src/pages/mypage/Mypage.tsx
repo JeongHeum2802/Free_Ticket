@@ -52,6 +52,10 @@ export default function Mypage() {
               <NavLink to="profile" className={menuClass}>
                 개인정보
               </NavLink>
+
+              <NavLink to="passwordreset" className={menuClass}>
+                비밀번호 재설성
+              </NavLink>
             </nav>
           </div>
         </aside>
