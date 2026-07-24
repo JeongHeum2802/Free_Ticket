@@ -1,9 +1,10 @@
 import { useAuth } from "../../context/AuthContext";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 
 export default function Mypage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const menuClass = ({ isActive }: { isActive: boolean }) =>
     `block rounded-lg px-4 py-3 transition-colors ${isActive
@@ -11,7 +12,11 @@ export default function Mypage() {
       : "text-gray-700 hover:bg-gray-100"
     }`;
 
-
+  const handleClickLogout = async () => {
+      navigate("/", { replace:true });
+      await logout();
+      alert("로그아웃이 완료되었습니다.");
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
@@ -22,9 +27,17 @@ export default function Mypage() {
             <div className="border-b border-gray-200 pb-5">
               <p className="text-sm text-gray-500">마이페이지</p>
 
-              <h2 className="mt-1 text-xl font-bold">
-                {user?.username ?? "사용자"}님
-              </h2>
+              <div className="flex justify-between">
+                <h2 className="mt-1 text-xl font-bold">
+                  {user?.username ?? "사용자"}님
+                </h2>
+                <button
+                  className="hover:bg-gray-800 rounded-xl p-2 bg-black text-white"
+                  onClick={handleClickLogout}
+                >
+                  로그아웃
+                </button>
+              </div>
             </div>
 
             <nav className="mt-5 flex flex-col gap-2">

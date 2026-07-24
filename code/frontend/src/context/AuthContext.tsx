@@ -58,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       saveAccessToken(null);
       setUser(null);
-      navigate("/", { replace: true });
     }
   };
   
