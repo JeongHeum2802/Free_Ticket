@@ -12,6 +12,7 @@ export default function Loginpage() {
   const [emailInput, setEmailInput] = useState<string>("");
   const [passwordInput, setPasswordInput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFindPasswordModalOpen, setIsFindPasswordModalOpen] = useState<boolean>(false);
 
   const [signUpInputUsername, setSignUpInputUsername] = useState<string>("");
   const [signUpInputEmail, setSignUpInputEmail] = useState<string>("");
@@ -59,6 +60,10 @@ export default function Loginpage() {
     setSignUpInputPhonenumber(value);
   }
 
+  const handleClickFindPassword = () => {
+    setIsFindPasswordModalOpen(true);
+  }
+
   // 로그인
   const handleClickLogin = async () => {
     try {
@@ -98,7 +103,7 @@ export default function Loginpage() {
       setIsLogin(true);
       return;
     } catch (error) {
-      if(axios.isAxiosError(error)) {
+      if (axios.isAxiosError(error)) {
         let message = error.response?.data?.message ?? "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
         setErrorMessage(message);
       }
@@ -107,6 +112,76 @@ export default function Loginpage() {
 
   return (
     <div className="min-h-screen bg-white text-[#333]">
+      {isFindPasswordModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setIsFindPasswordModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  비밀번호 재설정
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  가입할 때 사용한 이메일을 입력하면
+                  <br />
+                  비밀번호 재설정 페이지를 보내드립니다.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsFindPasswordModalOpen(false)}
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                aria-label="모달 닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-7">
+              <label
+                htmlFor="reset-email"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
+                이메일
+              </label>
+
+              <input
+                id="reset-email"
+                type="email"
+                placeholder="example@email.com"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-black focus:ring-2 focus:ring-black/10"
+              />
+            </div>
+
+            <div className="mt-7 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsFindPasswordModalOpen(false)}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                취소
+              </button>
+
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-black px-4 py-3 font-medium text-white transition hover:bg-gray-800"
+              >
+                재설정 페이지 전송
+              </button>
+            </div>
+
+            <p className="mt-5 text-center text-xs text-gray-400">
+              이메일이 도착하지 않으면 스팸 메일함을 확인해주세요.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Main */}
       <main className="mx-auto mt-14 w-90">
         {/* Tabs */}
@@ -130,69 +205,52 @@ export default function Loginpage() {
         </div>
 
         {/* Login Inputs */}
-        {isLogin && (<><div className="mt-5 space-y-3">
-          <input
-            type="text"
-            placeholder="이메일"
-            value={emailInput}
-            onChange={(e) => handleChangeEmailInput(e.target.value)}
-            className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
-          />
+        {isLogin && (<form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleClickLogin();
+          }}>
+          <div className="mt-5 space-y-3">
+            <input
+              type="text"
+              placeholder="이메일"
+              value={emailInput}
+              onChange={(e) => handleChangeEmailInput(e.target.value)}
+              className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
+            />
 
-          <input
-            type="password"
-            placeholder="비밀번호"
-            value={passwordInput}
-            onChange={(e) => handleChangePasswordInput(e.target.value)}
-            className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
-          />
-        </div>
+            <input
+              type="password"
+              placeholder="비밀번호"
+              value={passwordInput}
+              onChange={(e) => handleChangePasswordInput(e.target.value)}
+              className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
+            />
+          </div>
           {/* 로그인 실패 메세지 */}
           {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
 
-          <div className="mt-5 flex items-center gap-5 text-sm text-gray-600">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" className="h-5 w-5 accent-[#1e88ff]" />
-              로그인 상태 유지
-            </label>
-
-            <label className="flex items-center gap-2">
-              <input type="checkbox" className="h-5 w-5 accent-[#1e88ff]" />
-              아이디 저장
-            </label>
-          </div>
-
           <button
+            type="submit"
             className="mt-5 h-14.5 w-full bg-[#1089ff] text-lg font-semibold text-white hover:bg-[#0078ed]"
-            onClick={handleClickLogin}
           >
             로그인
           </button>
 
           <div className="mt-5 flex items-center gap-3 text-sm text-gray-600">
-            <button>아이디 찾기</button>
+            <button className="hover:text-blue-500">아이디 찾기</button>
             <span className="text-gray-300">|</span>
-            <button>비밀번호 찾기</button>
+            <button onClick={handleClickFindPassword} className="hover:text-blue-500">비밀번호 찾기</button>
           </div>
-
-          <div className="mt-11 space-y-2">
-            <button className="flex h-10 w-full items-center border border-gray-300 bg-white text-sm">
-              <span className="flex h-full w-10 items-center justify-center border-r border-gray-300 text-2xl font-bold text-[#1ec800]">
-                N
-              </span>
-              <span className="pl-4">네이버 아이디로 로그인</span>
-            </button>
-
-            <button className="flex h-10 w-full items-center border border-gray-300 bg-white text-sm">
-              <span className="flex h-full w-10 items-center justify-center border-r border-gray-300">
-                <span className="h-4 w-4 rounded-full bg-[#f7d600]" />
-              </span>
-              <span className="pl-4">카카오 아이디로 로그인</span>
-            </button>
-          </div></>)}
+        </form>)}
 
         {/* SignUp Inputs */}
-        {!isLogin && (<>
+        {!isLogin && (<form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleClickSignup();
+          }}
+        >
           <div className="mt-5 space-y-3">
             <input
               type="text"
@@ -250,17 +308,17 @@ export default function Loginpage() {
 
           {/* 회원가입 버튼 */}
           <button
+            type="submit"
             className="mt-6 h-14 w-full bg-[#1089ff] text-lg font-semibold text-white transition-colors hover:bg-[#0078ed]"
-            onClick={handleClickSignup}
           >
             가입하기
           </button>
-        </>)}
+        </form>)}
       </main>
 
       {/* Footer */}
       <footer className="mt-20 border-t border-gray-200 py-5 text-center text-xs text-gray-500">
-        Copyright © <strong>YES24 Corp.</strong> All rights Reserved.
+        Copyright © <strong>Free Ticket.</strong> All rights Reserved.
       </footer>
     </div >
   );
