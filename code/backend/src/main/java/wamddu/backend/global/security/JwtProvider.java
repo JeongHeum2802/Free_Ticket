@@ -33,12 +33,12 @@ public class JwtProvider {
         this.expirationTime = expirationTime;
     }
 
-    public String generateJwtToken(String email, String role) {
+    public String generateJwtToken(Long id, String role) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
-                .subject(email)
+                .subject(id.toString())
                 .claim("role", role)
                 .issuedAt(now)
                 .expiration(validity)
@@ -46,12 +46,12 @@ public class JwtProvider {
                 .compact();
     }
 
-    public String generateRefreshToken(String email) {
+    public String generateRefreshToken(Long id) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + 604800);
 
         return Jwts.builder()
-                .subject(email)
+                .subject(id.toString())
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey)
@@ -79,24 +79,23 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        String email = claims.getSubject();
+        Long userId = Long.parseLong(claims.getSubject());
         String role = claims.get("role", String.class);
 
         List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
 
-        User principal = new User(email, "", authorities);
+        User principal = new User(String.valueOf(userId), "", authorities);
 
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 
-    public String getEmail(String token) {
+    public Long getId(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
 
-        String email = claims.getSubject();
-        return email;
+        return Long.parseLong(claims.getSubject());
     }
 }

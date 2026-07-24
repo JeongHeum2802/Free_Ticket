@@ -114,7 +114,7 @@ public class userService {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        String token = jwtProvider.generateJwtToken(user.getEmail(), user.getRole().name());
+        String token = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
 
         userResponseDTO responseUser = new userResponseDTO();
         responseUser.setId(user.getId());
@@ -129,7 +129,7 @@ public class userService {
         response.put("expiresIn", 1800);
         response.put("user", responseUser);
 
-        String refreshToken = jwtProvider.generateRefreshToken(user.getEmail());
+        String refreshToken = jwtProvider.generateRefreshToken(user.getId());
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
@@ -162,15 +162,16 @@ public class userService {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        String email = jwtProvider.getEmail(refreshToken);
-        User user =  userRepository.findByEmail(email);
+        Long id = jwtProvider.getId(refreshToken);
+        User user =  userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
 
-        String newToken = jwtProvider.generateJwtToken(user.getEmail(), user.getRole().name());
+        String newToken = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
         response.put("accessToken", newToken);
         response.put("tokenType", "Bearer");
         response.put("expiresIn", 1800);
 
-        String newRefreshToken = jwtProvider.generateRefreshToken(user.getEmail());
+        String newRefreshToken = jwtProvider.generateRefreshToken(user.getId());
         ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
                 .httpOnly(true)
                 .secure(true)
@@ -188,7 +189,8 @@ public class userService {
     @Transactional
     public ResponseEntity<Map<String, Object>> getMyInfo(UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
-        User user = userRepository.findByEmail(userDetails.getUsername());
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+                .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
 
         userResponseDTO responseUser = new userResponseDTO();
         responseUser.setId(user.getId());
@@ -208,7 +210,8 @@ public class userService {
     public ResponseEntity<Map<String, Object>> updateMyInfo(updateRequestDTO updateRequestDTO, UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
 
-        User user = userRepository.findByEmail(userDetails.getUsername());
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+                .orElseThrow(() -> new IllegalArgumentException("서버 오륲"));
 
         if(updateRequestDTO.getEmail() != null){
             if(userRepository.existsByEmail(updateRequestDTO.getEmail())){
@@ -252,6 +255,7 @@ public class userService {
         responseUser.setPhonenumber(user.getPhonenumber());
         responseUser.setRole(user.getRole());
 
+        response.put("message" , "회원 정보가 수정되었습니다.");
         response.put("user" , responseUser);
         return  ResponseEntity
                 .status(HttpStatus.OK)
@@ -262,7 +266,9 @@ public class userService {
     public ResponseEntity<Map<String, Object>> updateMyPassword(updatePasswordRequestDTO requestDTO, UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
 
-        User user = userRepository.findByEmail(userDetails.getUsername());
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+                .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
+
         if(!passwordEncoder.matches(requestDTO.getOldPassword(), user.getPassword())){
             response.put("code", "INVALID_CURRENT_PASSWORD");
             response.put("message", "현재 비밀번호가 올바르지 않습니다.");
@@ -291,7 +297,8 @@ public class userService {
                                                                HttpServletResponse httpServletResponse) {
         Map<String, Object> response = new LinkedHashMap<>();
 
-        User user = userRepository.findByEmail(userDetails.getUsername());
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+                .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
         if(!passwordEncoder.matches(deleteUserRequestDTO.getPassword(), user.getPassword())){
             response.put("code", "INVALID_PASSWORD");
             response.put("message", "비밀번호가 올바르지 않습니다.");
