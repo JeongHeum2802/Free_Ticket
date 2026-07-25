@@ -38,7 +38,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div>
+        <div className="mb-10">
           <label
             htmlFor="phone"
             className="mb-2 block text-sm font-medium text-gray-700"
