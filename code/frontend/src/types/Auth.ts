@@ -68,3 +68,22 @@ export type ApiErrorResponse = {
   message: string;
   errors?: Record<string, string>;
 };
+
+export type ResetPasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export type ResetPasswordReponse = {
+  code?: string;
+  message: string;
+}
+
+export type DeleteAccountRequest = {
+  password: string;
+}
+
+export type DeleteAccountReponse = {
+  code: string;
+  message: string;
+}
