@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import wamddu.backend.event.domain.Event;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "tickets")
 @Getter
@@ -24,6 +26,8 @@ public class Ticket {
     private Integer total_ticket;
     private Integer sold_ticket;
     private String description;
+    private LocalDateTime bookingEndtime;
+    private LocalDateTime start_time;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")

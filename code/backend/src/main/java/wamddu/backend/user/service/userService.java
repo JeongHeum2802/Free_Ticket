@@ -269,7 +269,7 @@ public class userService {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
 
-        if(!passwordEncoder.matches(requestDTO.getOldPassword(), user.getPassword())){
+        if(!passwordEncoder.matches(requestDTO.getCurrentPassword(), user.getPassword())){
             response.put("code", "INVALID_CURRENT_PASSWORD");
             response.put("message", "현재 비밀번호가 올바르지 않습니다.");
 
