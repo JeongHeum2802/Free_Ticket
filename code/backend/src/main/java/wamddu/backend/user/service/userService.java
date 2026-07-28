@@ -134,7 +134,7 @@ public class userService {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Lax")
-                .path("/api/auth")
+                .path("/api/auth/refresh")
                 .maxAge(604800)
                 .build();
 
@@ -176,7 +176,7 @@ public class userService {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Lax")
-                .path("/api/auth")
+                .path("/api/auth/refresh")
                 .maxAge(604800)
                 .build();
 
