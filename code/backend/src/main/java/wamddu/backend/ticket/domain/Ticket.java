@@ -32,4 +32,16 @@ public class Ticket {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")
     private Event event;
+
+    public Integer getRemainingTickets() {
+        return this.total_ticket - this.sold_ticket;
+    }
+
+    public Boolean isSoldOut() {
+        return getRemainingTickets() <= 0;
+    }
+
+    public Boolean isAvailableBooking() {
+        return !isSoldOut() && LocalDateTime.now().isBefore(this.bookingEndtime);
+    }
 }
