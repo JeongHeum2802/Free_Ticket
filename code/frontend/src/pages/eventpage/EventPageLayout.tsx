@@ -1,94 +1,106 @@
-import SlidePosts1 from "../../components/SlidePosts1";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
+import { getEvents, getWeeklyRanking, getWhatsHot, hasBannerImage } from "../../api/events";
+import SlidePosts from "../../components/SlidePosts1";
+import type { EventCategory, EventSummary, RankedEvent } from "../../types/Event";
 import PosterSection from "./PosterSection";
 import WeeklyRankingSection from "./WeeklyRankingSection";
 
-import type { EventPageItem } from "./EventPageTypes";
-
 type EventPageLayoutProps = {
+  category: EventCategory;
   categoryName: string;
-  events: EventPageItem[];
-  weeklyRankingEvents?: EventPageItem[];
 };
 
-function getEventEndTime(event: EventPageItem): number {
-  const date =
-    event.end_time instanceof Date
-      ? event.end_time
-      : new Date(event.end_time);
-    
-  if (Number.isNaN(date.getTime())) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  return date.getTime();
-}
-
 export default function EventPageLayout({
+  category,
   categoryName,
-  events,
-  weeklyRankingEvents,
 }: EventPageLayoutProps) {
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [hotEvents, setHotEvents] = useState<RankedEvent[]>([]);
+  const [rankingEvents, setRankingEvents] = useState<RankedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPage = async () => {
+      setLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const [eventList, whatsHot, weeklyRanking] = await Promise.all([
+          getEvents(category),
+          getWhatsHot({ category, limit: 5 }),
+          getWeeklyRanking({ category, limit: 5 }),
+        ]);
+
+        if (active) {
+          setEvents(eventList);
+          setHotEvents(whatsHot);
+          setRankingEvents(weeklyRanking);
+        }
+      } catch (error) {
+        if (active) {
+          const message = axios.isAxiosError(error)
+            ? error.response?.data?.message
+            : null;
+          setErrorMessage(message ?? "이벤트를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadPage();
+
+    return () => {
+      active = false;
+    };
+  }, [category]);
+
+  const heroSlides = hotEvents.filter(hasBannerImage).slice(0, 3).map((event) => ({
+    id: event.id,
+    name: event.name,
+    imageUrl: event.bannerImageUrl,
+    posterUrl: event.mainImageUrl,
+  }));
+
   const closingSoonEvents = [...events].sort(
     (firstEvent, secondEvent) =>
-      getEventEndTime(firstEvent) -
-      getEventEndTime(secondEvent)
+      new Date(firstEvent.endDate).getTime() - new Date(secondEvent.endDate).getTime(),
   );
-  
-  const rankingEvents = weeklyRankingEvents ?? events.slice(0,5);
-
-
-  const heroSlides = events
-    .filter(
-      (event) =>
-        event.imageUrl.trim() !== "" &&
-        event.postUrl.trim() !== ""
-    )
-    .slice(0, 3)
-    .map((event) => ({
-      id: event.eventid,
-      name: event.name,
-      imageUrl: event.imageUrl,
-      posterUrl: event.postUrl,
-    }));
 
   return (
     <main className="min-h-screen bg-white text-[#222222]">
-      {
-        
-      }
-      {/* <SlidePosts /> */}
-      <SlidePosts1
-        key={`${categoryName}-${heroSlides
-          .map((slide) => slide.id)
-          .join("-")}`}
-        slides={heroSlides}
-      />
+      {!loading && !errorMessage && <SlidePosts slides={heroSlides} />}
 
-      {/* 카테고리 페이지 제목 */}
       <section className="py-20 text-center">
-
-        <h1 className="text-4xl font-extrabold text-[#222222]">
-          {categoryName}
-        </h1>
-
+        <h1 className="text-4xl font-extrabold">{categoryName}</h1>
         <div className="mx-auto mt-5 h-[3px] w-10 bg-[#f36f21]" />
       </section>
 
-      {events.length > 0 ? (
+      {loading ? (
+        <p className="py-32 text-center text-gray-500">
+          이벤트를 불러오는 중입니다.
+        </p>
+      ) : errorMessage ? (
+        <p className="py-32 text-center text-red-500">{errorMessage}</p>
+      ) : events.length === 0 ? (
+        <p className="py-32 text-center text-gray-500">
+          등록된 이벤트가 없습니다.
+        </p>
+      ) : (
         <>
           <section className="mb-24">
-            <PosterSection
-              title="WHAT'S HOT"
-              events={events.slice(0, 5)}
-            />
+            <PosterSection title="WHAT'S HOT" events={hotEvents} />
           </section>
 
-          {/* WEEKLY RANKING */}
           <section className="mb-24 bg-[#f7f7f7] py-20">
-            <WeeklyRankingSection
-              events={rankingEvents}
-            />
+            <WeeklyRankingSection events={rankingEvents} />
           </section>
 
           <section className="mb-24 bg-[#f7f7f7] py-20">
@@ -100,16 +112,9 @@ export default function EventPageLayout({
           </section>
 
           <section className="pb-24">
-            <PosterSection
-              title="FREE TICKET'S PICKS"
-              events={events}
-            />
+            <PosterSection title="FREE TICKET'S PICKS" events={events} />
           </section>
         </>
-      ) : (
-        <p className="py-32 text-center text-gray-500">
-          등록된 이벤트가 없습니다.
-        </p>
       )}
     </main>
   );

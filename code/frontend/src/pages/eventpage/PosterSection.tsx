@@ -1,25 +1,18 @@
 import { Link } from "react-router-dom";
 
-import type { EventPageItem } from "./EventPageTypes";
+import type { EventSummary } from "../../types/Event";
 
 type PosterSectionProps = {
   title: string;
-  events: EventPageItem[];
+  events: EventSummary[];
   showMore?: boolean;
 };
 
 /*
-  Date 또는 문자열을 실제 Date 객체로 변환합니다.
-*/
-function convertToDate(value: Date | string): Date {
-  return value instanceof Date ? value : new Date(value);
-}
-
-/*
   날짜를 2026.08.15 형식으로 표시합니다.
 */
-function formatDate(value: Date | string): string {
-  const date = convertToDate(value);
+function formatDate(value: string): string {
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "";
@@ -42,21 +35,21 @@ function formatDate(value: Date | string): string {
   2026.08.15 ~ 2026.11.15
 */
 function formatEventPeriod(
-  startTime: Date | string,
-  endTime: Date | string
+  startDate: string,
+  endDate: string
 ): string {
-  const startDate = formatDate(startTime);
-  const endDate = formatDate(endTime);
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
 
-  if (!startDate || !endDate) {
+  if (!formattedStartDate || !formattedEndDate) {
     return "";
   }
 
-  if (startDate === endDate) {
-    return startDate;
+  if (formattedStartDate === formattedEndDate) {
+    return formattedStartDate;
   }
 
-  return `${startDate} ~ ${endDate}`;
+  return `${formattedStartDate} ~ ${formattedEndDate}`;
 }
 
 export default function PosterSection({
@@ -94,14 +87,14 @@ export default function PosterSection({
       <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-5">
         {events.map((event) => (
           <Link
-            key={event.eventid}
-            to={`/ticket/${event.eventid}`}
+            key={event.id}
+            to={`/ticket/${event.id}`}
             className="group min-w-0 no-underline"
           >
             {/* 포스터 이미지 */}
             <div className="relative aspect-[3/4] overflow-hidden bg-[#eeeeee]">
               <img
-                src={event.postUrl}
+                src={event.mainImageUrl}
                 alt={`${event.name} 포스터`}
                 className="
                   h-full w-full
@@ -111,22 +104,6 @@ export default function PosterSection({
                   group-hover:scale-[1.045]
                 "
               />
-
-              {/* 단독/추천 배지 */}
-              {event.badge && (
-                <span
-                  className="
-                    absolute bottom-3 left-3
-                    flex h-11 w-11
-                    items-center justify-center
-                    rounded-full
-                    bg-[#f36f21]
-                    text-xs font-bold text-white
-                  "
-                >
-                  {event.badge}
-                </span>
-              )}
             </div>
 
             {/* 포스터 하단 정보 */}
@@ -146,8 +123,8 @@ export default function PosterSection({
 
               <p className="mt-2 text-[13px] text-[#999999]">
                 {formatEventPeriod(
-                  event.start_time,
-                  event.end_time
+                  event.startDate,
+                  event.endDate
                 )}
               </p>
 

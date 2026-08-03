@@ -1,60 +1,74 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-import SlidePosts from "../components/SlidePosts"
-import Barnner from "../components/Banner"
-
-import type { Concert } from "../types/Concert"
+import { getWhatsHot, hasBannerImage } from "../api/events";
+import Banner from "../components/Banner";
+import SlidePosts from "../components/SlidePosts1";
+import type { RankedEvent } from "../types/Event";
 
 export default function Homepage() {
-  const [concerts] = useState<Concert[]>([
-    {
-      id: 1,
-      category: 'MUSICAL',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202606/20260623/58949_big_main_58949.jpg/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/Upload2/Display/202606/20260623/58949_big_main_s_58949.jpg/dims/quality/',
-    },
-    {
-      id: 2,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202606/20260625/58962_big_main_58962.jpg/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/upload2/perfblog/202606/20260618/20260618-58962.jpg/dims/quality/70/',
-    },
-    {
-      id: 3,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563.png/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563_s.jpg/dims/quality/'
-    },
-    {
-      id: 4,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563.png/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/upload2/perfblog/202605/20260529/20260529-58354.jpg/dims/quality/'
-    },
-    {
-      id: 5,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563.png/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/upload2/perfblog/202604/20260414/20260414-58105.jpg/dims/quality/'
-    },
-    {
-      id: 6,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563.png/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/upload2/perfblog/202604/20260414/20260414-58103_2.jpg/dims/quality/'
-    },
-    {
-      id: 7,
-      category: 'CONCERT',
-      imageUrl: 'https://tkfile.yes24.com/Upload2/Display/202605/20260528/58563_big_main_58563.png/dims/quality/',
-      posterUrl: 'https://tkfile.yes24.com/upload2/perfblog/202605/20260515/20260515-58163.jpg/dims/quality/70/'
-    }
-  ]);
+  const [events, setEvents] = useState<RankedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadEvents = async () => {
+      try {
+        const nextEvents = await getWhatsHot({ limit: 7 });
+
+        if (active) {
+          setEvents(nextEvents);
+        }
+      } catch (error) {
+        if (active) {
+          const message = axios.isAxiosError(error)
+            ? error.response?.data?.message
+            : null;
+          setErrorMessage(message ?? "이벤트를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadEvents();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="flex min-h-[500px] items-center justify-center text-gray-500">
+        이벤트를 불러오는 중입니다.
+      </main>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <main className="flex min-h-[500px] items-center justify-center px-6 text-center text-red-500">
+        {errorMessage}
+      </main>
+    );
+  }
+
+  const heroSlides = events.filter(hasBannerImage).slice(0, 3).map((event) => ({
+    id: event.id,
+    name: event.name,
+    imageUrl: event.bannerImageUrl,
+    posterUrl: event.mainImageUrl,
+  }));
+
   return (
-    <div>
-      <SlidePosts />
-      <Barnner title="Today's HOT" concerts={concerts}/>
-      <Barnner title="마감 임박!" concerts={concerts}/>
-    </div>
-  )
+    <main>
+      <SlidePosts slides={heroSlides} />
+      <Banner title="WHAT'S HOT" events={events} />
+    </main>
+  );
 }

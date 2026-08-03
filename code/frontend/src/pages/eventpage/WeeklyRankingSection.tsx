@@ -1,16 +1,13 @@
 import { Link } from "react-router-dom";
 
-import type { EventPageItem } from "./EventPageTypes";
+import type { RankedEvent } from "../../types/Event";
 
 type WeeklyRankingSectionProps = {
-  events: EventPageItem[];
+  events: RankedEvent[];
 };
 
-function formatDate(value: Date | string): string {
-  const date =
-    value instanceof Date
-      ? value
-      : new Date(value);
+function formatDate(value: string): string {
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "";
@@ -28,21 +25,21 @@ function formatDate(value: Date | string): string {
 }
 
 function formatEventPeriod(
-  startTime: Date | string,
-  endTime: Date | string
+  startDate: string,
+  endDate: string
 ): string {
-  const startDate = formatDate(startTime);
-  const endDate = formatDate(endTime);
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
 
-  if (!startDate || !endDate) {
+  if (!formattedStartDate || !formattedEndDate) {
     return "";
   }
 
-  if (startDate === endDate) {
-    return startDate;
+  if (formattedStartDate === formattedEndDate) {
+    return formattedStartDate;
   }
 
-  return `${startDate} ~ ${endDate}`;
+  return `${formattedStartDate} ~ ${formattedEndDate}`;
 }
 
 export default function WeeklyRankingSection({
@@ -74,7 +71,7 @@ export default function WeeklyRankingSection({
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* 1위 이벤트 */}
         <Link
-          to={`/ticket/${firstEvent.eventid}`}
+          to={`/ticket/${firstEvent.id}`}
           className="
             group
             grid
@@ -110,7 +107,7 @@ export default function WeeklyRankingSection({
               "
             >
               <img
-                src={firstEvent.postUrl}
+                src={firstEvent.mainImageUrl}
                 alt={`${firstEvent.name} 포스터`}
                 className="
                   block
@@ -135,7 +132,7 @@ export default function WeeklyRankingSection({
                   shadow-sm
                 "
               >
-                1
+                {firstEvent.rank}
               </span>
             </div>
           </div>
@@ -152,8 +149,8 @@ export default function WeeklyRankingSection({
 
             <p className="mt-5 text-sm text-[#888888]">
               {formatEventPeriod(
-                firstEvent.start_time,
-                firstEvent.end_time
+                firstEvent.startDate,
+                firstEvent.endDate
               )}
             </p>
 
@@ -179,19 +176,17 @@ export default function WeeklyRankingSection({
             shadow-sm
           "
         >
-          {otherEvents.map((event, index) => {
-            const rank = index + 2;
-
+          {otherEvents.map((event) => {
             return (
               <li
-                key={event.eventid}
+                key={event.id}
                 className="
                   border-b border-[#eeeeee]
                   last:border-b-0
                 "
               >
                 <Link
-                  to={`/ticket/${event.eventid}`}
+                  to={`/ticket/${event.id}`}
                   className="
                     group
                     grid
@@ -206,7 +201,7 @@ export default function WeeklyRankingSection({
                 >
                   {/* 순위 숫자 */}
                   <strong className="text-center text-lg font-extrabold text-[#555555]">
-                    {rank}
+                    {event.rank}
                   </strong>
 
                   {/* 작은 포스터 */}
@@ -218,7 +213,7 @@ export default function WeeklyRankingSection({
                     "
                   >
                     <img
-                      src={event.postUrl}
+                      src={event.mainImageUrl}
                       alt={`${event.name} 포스터`}
                       className="
                         block
@@ -248,8 +243,8 @@ export default function WeeklyRankingSection({
 
                     <p className="mt-2 text-[12px] text-[#999999]">
                       {formatEventPeriod(
-                        event.start_time,
-                        event.end_time
+                        event.startDate,
+                        event.endDate
                       )}
                     </p>
 
