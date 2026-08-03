@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 
-import type { RankedEvent } from "../../types/Event";
+import type { WeeklyRankedEvent } from "../../types/Event";
 
 type WeeklyRankingSectionProps = {
-  events: RankedEvent[];
+  events: WeeklyRankedEvent[];
 };
 
 function formatDate(value: string): string {

@@ -1,10 +1,12 @@
 import { api } from "./axios";
 import type {
   EventCategory,
+  EventDetail,
   EventDetailResponse,
   EventListResponse,
-  RankedEvent,
+  HotEvent,
   RankedEventsResponse,
+  WeeklyRankedEvent,
 } from "../types/Event";
 
 type EventQuery = {
@@ -21,15 +23,16 @@ export async function getEvents(category?: EventCategory) {
 }
 
 export async function getWhatsHot({ category, limit }: EventQuery = {}) {
-  const response = await api.get<RankedEventsResponse>("/events/whats-hot", {
-    params: { category, limit },
-  });
+  const response = await api.get<RankedEventsResponse<HotEvent>>(
+    "/events/whats-hot",
+    { params: { category, limit } },
+  );
 
   return response.data.data.events;
 }
 
 export async function getWeeklyRanking({ category, limit }: EventQuery = {}) {
-  const response = await api.get<RankedEventsResponse>(
+  const response = await api.get<RankedEventsResponse<WeeklyRankedEvent>>(
     "/events/weekly-ranking",
     { params: { category, limit } },
   );
@@ -39,12 +42,15 @@ export async function getWeeklyRanking({ category, limit }: EventQuery = {}) {
 
 export async function getEventDetail(eventId: number) {
   const response = await api.get<EventDetailResponse>(`/events/${eventId}`);
+  const { event, ticketOptions } = response.data.data;
+  const { running_time: legacyRunningTime, runningTime, ...eventFields } = event;
+  const normalizedEvent: EventDetail = {
+    ...eventFields,
+    runningTime: runningTime ?? legacyRunningTime ?? 0,
+  };
 
-  return response.data.data;
-}
-
-export function hasBannerImage(
-  event: RankedEvent,
-): event is RankedEvent & { bannerImageUrl: string } {
-  return Boolean(event.bannerImageUrl?.trim() && event.mainImageUrl.trim());
+  return {
+    event: normalizedEvent,
+    ticketOptions,
+  };
 }

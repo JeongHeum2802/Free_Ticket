@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import type { RankedEvent } from "../types/Event";
+import type { HotEvent } from "../types/Event";
 
 type BannerProps = {
   title?: string;
-  events: RankedEvent[];
+  events: HotEvent[];
 };
 
 export default function Banner({ title, events }: BannerProps) {

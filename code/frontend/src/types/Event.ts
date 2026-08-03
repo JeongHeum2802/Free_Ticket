@@ -17,9 +17,12 @@ export type EventSummary = {
   description?: string;
 };
 
-export type RankedEvent = EventSummary & {
+export type WeeklyRankedEvent = EventSummary & {
   rank: number;
-  bannerImageUrl?: string;
+};
+
+export type HotEvent = WeeklyRankedEvent & {
+  bannerImageUrl: string;
 };
 
 export type EventDetail = EventSummary & {
@@ -50,18 +53,23 @@ export type EventListResponse = {
   };
 };
 
-export type RankedEventsResponse = {
+export type RankedEventsResponse<TEvent extends WeeklyRankedEvent> = {
   message: string;
   data: {
     category: EventCategory | null;
-    events: RankedEvent[];
+    events: TEvent[];
   };
+};
+
+export type EventDetailApi = Omit<EventDetail, "runningTime"> & {
+  runningTime?: number;
+  running_time?: number;
 };
 
 export type EventDetailResponse = {
   message: string;
   data: {
-    event: EventDetail;
+    event: EventDetailApi;
     ticketOptions: TicketOption[];
   };
 };
