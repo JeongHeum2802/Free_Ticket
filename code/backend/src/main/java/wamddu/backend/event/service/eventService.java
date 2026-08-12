@@ -7,7 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import wamddu.backend.event.domain.Event;
-import wamddu.backend.event.domain.EventRankDto;
+import wamddu.backend.event.domain.getEventsResponseDto;
+import wamddu.backend.event.domain.weeklyRankingResponseDto;
+import wamddu.backend.event.domain.whatshotResponseDto;
 import wamddu.backend.event.repository.eventRepository;
 import wamddu.backend.ticket.domain.EventTicketResponseDTO;
 import wamddu.backend.ticket.domain.Ticket;
@@ -26,50 +28,29 @@ public class eventService {
 
     public ResponseEntity<Map<String, Object>> getEvents(String category) {
         Map<String, Object> response = new LinkedHashMap<>();
-        Map<String, Object> events = new LinkedHashMap<>();
+        Map<String, Object> data = new LinkedHashMap<>();
 
-        List<String> categories = eventRepository.findAllCategories();
+        if(category != null){
+            List<String> allCategories = eventRepository.findAllCategories();
 
-        if(category == null) {
-            List<Event> allEvents = eventRepository.findAll();
-
-            if(allEvents.isEmpty()) {
-                response.put("message", "조회된 이벤트가 없습니다.");
-            }
-
-            else {
-                response.put("message", "이벤트 목록 조회에 성공했습니다.");
-            }
-
-            events.put("events", allEvents);
-            response.put("data", events);
-
-            return ResponseEntity.status(HttpStatus.OK).body(response);
-        }
-
-        else {
-            List<Event> allEvents =  eventRepository.findAllByCategory(category);
-
-            if(!categories.contains(category)) {
+            if(!allCategories.contains(category)){
                 response.put("code", "INVALID_EVENT_CATEGORY");
                 response.put("message", "유효하지 않은 이벤트 카테고리입니다.");
 
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
-
-            if(allEvents.isEmpty()) {
-                response.put("message", "조회된 이벤트가 없습니다.");
-            }
-
-            else {
-                response.put("message", "이벤트 목록 조회에 성공했습니다.");
-            }
-
-            events.put("events", allEvents);
-            response.put("data", events);
-
-            return ResponseEntity.status(HttpStatus.OK).body(response);
         }
+
+        List<getEventsResponseDto> allEvents = eventRepository.getEventsByCategory(category);
+        if(allEvents.isEmpty()){
+            response.put("message", "조회된 이벤트가 없습니다.");
+        } else {
+            response.put("message", "이벤트 목록 조회에 성공했습니다.");
+        }
+        data.put("events", allEvents);
+        response.put("data", data);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     public ResponseEntity<Map<String, Object>> whatshot(String category, Integer limit) {
@@ -94,7 +75,7 @@ public class eventService {
         }
 
         Pageable pageable = PageRequest.of(0, limit);
-        List<Event> allEvents = eventRepository.whatshot(category, pageable);
+        List<whatshotResponseDto> allEvents = eventRepository.whatshot(category, pageable);
 
         events.put("category", category);
         events.put("events", allEvents);
@@ -127,7 +108,7 @@ public class eventService {
         }
 
         Pageable pageable = PageRequest.of(0, limit);
-        List<EventRankDto> allEvents = eventRepository.weeklyRanking(category, pageable);
+        List<weeklyRankingResponseDto> allEvents = eventRepository.weeklyRanking(category, pageable);
 
         events.put("category", category);
         events.put("events", allEvents);
@@ -141,7 +122,6 @@ public class eventService {
     public ResponseEntity<Map<String, Object>> getDetail(Long id) {
         Map<String, Object> response = new LinkedHashMap<>();
         Map<String, Object> data = new LinkedHashMap<>();
-        Map<String, Object> tickets = new LinkedHashMap<>();
 
         Event event = eventRepository.findById(id).orElse(null);
 
