@@ -23,6 +23,10 @@ public class Order {
 
     private Long ticket_id;
     private Long event_id;
+    private String paymentKey;
+
+    @Column(nullable = false, unique = true, length = 64)
+    private String orderId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
