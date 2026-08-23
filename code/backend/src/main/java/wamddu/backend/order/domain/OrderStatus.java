@@ -1,8 +1,10 @@
 package wamddu.backend.order.domain;
 
 public enum OrderStatus {
-    READY,
+    PENDING,
+    CONFIRMING,
     PAID,
-    FAILED,
-    CANCELED
+    PAYMENT_FAILED,
+    CANCELED,
+    EXPIRED
 }
