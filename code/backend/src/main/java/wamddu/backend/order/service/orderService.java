@@ -66,6 +66,14 @@ public class orderService {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
+        //티켓 10장 이하 구매인지 확인
+        if(!(requestDTO.getQuantity() >= 1 && requestDTO.getQuantity() <= 10)) {
+            response.put("code", "QUANTITY_ERROR");
+            response.put("message", "티켓은 최소 1장 최대 10장까지 구매 가능합니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
         //티켓이 남아있는지 확인
         int remaining = ticket.getTotal_ticket() - ticket.getSold_ticket();
         if(remaining <= requestDTO.getQuantity()) {
