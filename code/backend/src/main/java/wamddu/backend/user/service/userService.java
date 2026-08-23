@@ -14,6 +14,8 @@ import wamddu.backend.global.security.JwtProvider;
 import wamddu.backend.user.domain.*;
 import wamddu.backend.user.repository.userRepository;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,6 +26,17 @@ public class userService {
     private final PasswordEncoder passwordEncoder;
     private final userRepository userRepository;
     private final JwtProvider jwtProvider;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
+
+    public static String generateCustomerKey() {
+        byte[] randomBytes = new byte[16];
+        SECURE_RANDOM.nextBytes(randomBytes);
+
+        String randomString = URL_ENCODER.encodeToString(randomBytes);
+
+        return "customer_" + randomString;
+    }
 
     @Transactional
     public ResponseEntity<Map<String, Object>> signUp(signUpRequestDTO signUpRequestDTO) {
@@ -81,6 +94,7 @@ public class userService {
             user.setEmail(signUpRequestDTO.getEmail());
             user.setPhonenumber(signUpRequestDTO.getPhonenumber());
             user.setRole(Role.USER);
+            user.setCustomerKey(generateCustomerKey());
             User savedUser = userRepository.save(user);
 
             userResponseDTO responseUser = new userResponseDTO();

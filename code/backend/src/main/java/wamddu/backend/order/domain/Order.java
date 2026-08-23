@@ -34,11 +34,12 @@ public class Order {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seat_id")
+    @JoinColumn(name = "seat_id", nullable = true)
     private Seat seat = null;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
     private LocalDateTime orderDate =  LocalDateTime.now();
+    private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
 }

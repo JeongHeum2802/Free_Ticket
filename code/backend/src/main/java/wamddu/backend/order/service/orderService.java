@@ -2,6 +2,7 @@ package wamddu.backend.order.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @RequestMapping("/api/orders")
@@ -43,6 +45,7 @@ public class orderService {
     public ResponseEntity<Map<String, Object>> createOrder(createOrderRequestDTO requestDTO, UserDetails userDetails) {
 
         Map<String, Object> response = new LinkedHashMap<>();
+        Map<String, Object> data = new LinkedHashMap<>();
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
 
@@ -82,8 +85,29 @@ public class orderService {
             order.setEvent_id(ticket.getEvent().getId());
             order.setUser(user);
             orderRepository.save(order);
-        } catch(Exception e) {
 
+            response.put("message", "주문이 생성되었습니다.");
+
+            data.put("orderId",  order.getId());
+            data.put("orderName", ticket.getType());
+            data.put("amount", ticket.getPrice() * requestDTO.getQuantity());
+            data.put("quantity", requestDTO.getQuantity());
+            data.put("customerKey", user.getCustomerKey());
+            data.put("customerName", user.getUsername());
+            data.put("customerEmail", user.getEmail());
+            data.put("expiresAt", order.getExpiresAt());
+
+            response.put("data", data);
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch(Exception e) {
+            response.put("code", "INTERNAL_SERVER_ERROR");
+            response.put("message", e.getMessage());
+
+            log.error(e.getMessage());
+
+            throw e;
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
