@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.expression.spel.ast.NullLiteral;
 import wamddu.backend.seat.domain.Seat;
 import wamddu.backend.user.domain.User;
 
@@ -23,17 +24,22 @@ public class Order {
 
     private Long ticket_id;
     private Long event_id;
+    private String paymentKey = null;
+
+    @Column(nullable = false, unique = true, length = 64)
+    private String orderId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seat_id", nullable = false)
-    private Seat seat;
+    @JoinColumn(name = "seat_id", nullable = true)
+    private Seat seat = null;
 
     @Enumerated(EnumType.STRING)
-    private OrderStatus status;
+    private OrderStatus status = OrderStatus.PENDING;
 
-    private LocalDateTime orderDate;
+    private LocalDateTime orderDate =  LocalDateTime.now();
+    private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
 }
