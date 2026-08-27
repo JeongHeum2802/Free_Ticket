@@ -3,17 +3,14 @@ package wamddu.backend.ticket.domain;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
-@JsonPropertyOrder({"ticketId", "type", "price", "totalTicket", "soldTicket", "remainingTicket",
-"description", "bookingEndTime", "startTime", "soldOut", "bookingAvailable"})
+@JsonPropertyOrder({
+        "ticketId", "type", "price", "totalTicket", "soldTicket", "remainingTicket",
+        "description", "bookingEndTime", "startTime", "soldOut", "bookingAvailable"})
 public class EventTicketResponseDTO {
     private Long ticketId;
     private String type;

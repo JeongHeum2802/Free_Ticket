@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
 import { getEventDetail } from "../api/events";
+import { createOrder } from "../api/orders";
+import { useAuth } from "../context/AuthContext";
 import {
   eventCategoryLabels,
   type EventDetail,
@@ -36,6 +38,8 @@ function formatDateTime(value: string) {
 }
 
 export default function TicketDetailPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const eventId = Number(id);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -44,6 +48,8 @@ export default function TicketDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -96,6 +102,27 @@ export default function TicketDetailPage() {
     () => ticketOptions.find((ticket) => ticket.ticketId === selectedTicketId),
     [selectedTicketId, ticketOptions],
   );
+
+  const handleOrder = async () => {
+    if (!selectedTicket) return;
+    if (!user) {
+      navigate("/login", { state: { from: `/ticket/${eventId}` } });
+      return;
+    }
+
+    setOrdering(true);
+    setOrderError(null);
+    try {
+      const order = await createOrder(selectedTicket.ticketId, quantity);
+      navigate(`/payment/checkout/${order.orderId}`);
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : null;
+      setOrderError(message ?? "주문을 생성하지 못했습니다.");
+      setOrdering(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -217,7 +244,7 @@ export default function TicketDetailPage() {
                       <strong>{quantity}</strong>
                       <button
                         type="button"
-                        disabled={quantity >= selectedTicket.remainingTicket}
+                        disabled={quantity >= Math.min(selectedTicket.remainingTicket, 10)}
                         onClick={() => setQuantity((value) => value + 1)}
                         className="h-9 w-9 rounded-full border disabled:opacity-30"
                       >
@@ -231,11 +258,16 @@ export default function TicketDetailPage() {
 
                   <button
                     type="button"
-                    className="rounded-xl bg-[#453eda] px-10 py-4 font-bold text-white transition-colors hover:bg-[#352fc0]"
+                    disabled={ordering}
+                    onClick={() => void handleOrder()}
+                    className="rounded-xl bg-[#453eda] px-10 py-4 font-bold text-white transition-colors hover:bg-[#352fc0] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    예매하기
+                    {ordering ? "주문 생성 중..." : "예매하기"}
                   </button>
                 </div>
+              )}
+              {orderError && (
+                <p className="mt-4 text-right text-sm font-bold text-red-500">{orderError}</p>
               )}
             </section>
           </div>
