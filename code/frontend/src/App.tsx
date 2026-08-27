@@ -6,6 +6,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import Loginpage from './pages/Loginpage';
 import TicketDetailPage from './pages/TicketDetailPage';
+import PaymentCheckoutPage from './pages/payment/PaymentCheckoutPage';
+import PaymentSuccessPage from './pages/payment/PaymentSuccessPage';
+import PaymentFailPage from './pages/payment/PaymentFailPage';
 
 // 마이페이지
 import Mypage from './pages/mypage/Mypage';
@@ -43,6 +46,23 @@ export default function App() {
 
         <Route path="/login" element={<Loginpage />} />
         <Route path="/ticket/:id" element={<TicketDetailPage />} />
+        <Route path="/payment/fail" element={<PaymentFailPage />} />
+        <Route
+          path="/payment/checkout/:orderId"
+          element={
+            <ProtectedRoute>
+              <PaymentCheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/mypage"
           element={
