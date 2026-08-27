@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState, type UIEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { signupApi } from "../api/auth";
+import { PRIVACY_CONSENT, SERVICE_TERMS } from '../constants/termsContent';
 
 import type { SignupRequest } from '../types/Auth';
+
+type AgreementDocument = "terms" | "privacy";
+
+const SCROLL_END_MARGIN = 2;
 
 export default function Loginpage() {
   const navigate = useNavigate();
@@ -19,8 +24,29 @@ export default function Loginpage() {
   const [signUpInputPassword, setSignUpInputPassword] = useState<string>("");
   const [signUpInputPasswordDetector, setSignUpInputPasswordDetector] = useState<string>("");
   const [signUpInputPhonenumber, setSignUpInputPhonenumber] = useState<string>("");
+  const [openedAgreementDocument, setOpenedAgreementDocument] = useState<AgreementDocument | null>(null);
+  const [hasReadTerms, setHasReadTerms] = useState<boolean>(false);
+  const [hasReadPrivacy, setHasReadPrivacy] = useState<boolean>(false);
+  const [isTermsAgreed, setIsTermsAgreed] = useState<boolean>(false);
+  const [isPrivacyAgreed, setIsPrivacyAgreed] = useState<boolean>(false);
 
   const { login } = useAuth();
+
+  useEffect(() => {
+    if (!openedAgreementDocument) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenedAgreementDocument(null);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [openedAgreementDocument]);
 
   const handleClickLoginTab = () => {
     setIsLogin(true);
@@ -74,7 +100,7 @@ export default function Loginpage() {
       navigate("/");
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        let message = error.response?.data?.message ?? "로그인에 실패했습니다.";
+        const message = error.response?.data?.message ?? "로그인에 실패했습니다.";
 
         setErrorMessage(message);
         return;
@@ -85,6 +111,11 @@ export default function Loginpage() {
   }
 
   const handleClickSignup = async () => {
+    if (!isTermsAgreed || !isPrivacyAgreed) {
+      setErrorMessage("필수 약관에 모두 동의해 주세요.");
+      return;
+    }
+
     if (signUpInputPassword !== signUpInputPasswordDetector) {
       setErrorMessage("비밀번호가 일치하지 않습니다.");
       return;
@@ -104,14 +135,99 @@ export default function Loginpage() {
       return;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        let message = error.response?.data?.message ?? "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        const message = error.response?.data?.message ?? "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
         setErrorMessage(message);
       }
     }
   }
 
+  const handleAgreementScroll = (event: UIEvent<HTMLDivElement>) => {
+    const scrollArea = event.currentTarget;
+    const hasReachedEnd = scrollArea.scrollHeight - scrollArea.scrollTop <=
+      scrollArea.clientHeight + SCROLL_END_MARGIN;
+
+    if (!hasReachedEnd) {
+      return;
+    }
+
+    if (openedAgreementDocument === "terms") {
+      setHasReadTerms(true);
+      return;
+    }
+
+    setHasReadPrivacy(true);
+  }
+
+  const agreementTitle = openedAgreementDocument === "terms" ?
+    "프리티켓 서비스 이용약관" : "개인정보 수집·이용 동의서";
+  const agreementContent = openedAgreementDocument === "terms" ?
+    SERVICE_TERMS : PRIVACY_CONSENT;
+  const hasReadOpenedAgreement = openedAgreementDocument === "terms" ?
+    hasReadTerms : hasReadPrivacy;
+
+  const handleClickAgreement = () => {
+    if (!hasReadOpenedAgreement) {
+      return;
+    }
+
+    if (openedAgreementDocument === "terms") {
+      setIsTermsAgreed(true);
+    } else {
+      setIsPrivacyAgreed(true);
+    }
+
+    setOpenedAgreementDocument(null);
+  }
+
   return (
     <div className="min-h-screen bg-white text-[#333]">
+      {openedAgreementDocument && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setOpenedAgreementDocument(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="agreement-title"
+            className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
+              <h2 id="agreement-title" className="text-xl font-bold text-gray-900">
+                {agreementTitle}
+              </h2>
+              <button
+                type="button"
+                aria-label="약관 닫기"
+                onClick={() => setOpenedAgreementDocument(null)}
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              data-testid={`${openedAgreementDocument}-scroll-area`}
+              onScroll={handleAgreementScroll}
+              className="h-[60vh] overflow-y-auto whitespace-pre-wrap px-6 py-5 text-sm leading-7 text-gray-700"
+            >
+              {agreementContent}
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                disabled={!hasReadOpenedAgreement}
+                onClick={handleClickAgreement}
+                className="w-full rounded-xl bg-[#1089ff] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#0078ed] disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                동의
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {isFindPasswordModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -300,10 +416,51 @@ export default function Loginpage() {
 
           {errorMessage && <span className="text-red-400 text-sm mt-10">{errorMessage}</span>}
 
-          {/* 약관 동의 (옵션) */}
-          <div className="mt-5 flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" id="terms" className="h-5 w-5 accent-[#1e88ff]" />
-            <label htmlFor="terms">이용약관 및 개인정보 수집에 동의합니다.</label>
+          {/* 필수 약관 동의 */}
+          <div className="mt-5 space-y-3 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={isTermsAgreed}
+                disabled={!hasReadTerms}
+                onChange={(event) => setIsTermsAgreed(event.target.checked)}
+                className="h-5 w-5 accent-[#1e88ff] disabled:cursor-not-allowed"
+              />
+              <label htmlFor="terms" className={!hasReadTerms ? "text-gray-400" : ""}>
+                프리티켓 서비스 이용약관 동의
+              </label>
+              <button
+                type="button"
+                aria-label="서비스 이용약관 보기"
+                onClick={() => setOpenedAgreementDocument("terms")}
+                className="ml-auto font-medium text-[#1e88ff] hover:underline"
+              >
+                보기
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="privacy"
+                checked={isPrivacyAgreed}
+                disabled={!hasReadPrivacy}
+                onChange={(event) => setIsPrivacyAgreed(event.target.checked)}
+                className="h-5 w-5 accent-[#1e88ff] disabled:cursor-not-allowed"
+              />
+              <label htmlFor="privacy" className={!hasReadPrivacy ? "text-gray-400" : ""}>
+                개인정보 수집·이용 동의
+              </label>
+              <button
+                type="button"
+                aria-label="개인정보 수집·이용 동의 보기"
+                onClick={() => setOpenedAgreementDocument("privacy")}
+                className="ml-auto font-medium text-[#1e88ff] hover:underline"
+              >
+                보기
+              </button>
+            </div>
           </div>
 
           {/* 회원가입 버튼 */}
