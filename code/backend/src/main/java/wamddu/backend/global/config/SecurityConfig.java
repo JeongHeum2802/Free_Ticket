@@ -20,6 +20,7 @@ import wamddu.backend.global.security.JwtAuthenticationFilter;
 import wamddu.backend.global.security.JwtProvider;
 
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -42,7 +43,10 @@ public class SecurityConfig {
                     @Override
                     public @Nullable CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration config = new CorsConfiguration();
-                        config.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
+                        config.setAllowedOriginPatterns(List.of(
+                                "http://localhost:*",
+                                "http://127.0.0.1:*"
+                        ));
                         config.setAllowedMethods(Collections.singletonList("*"));
                         config.setAllowedHeaders(Collections.singletonList("*"));
                         config.setAllowCredentials(true);

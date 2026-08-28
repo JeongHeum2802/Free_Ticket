@@ -48,7 +48,7 @@ public class userController {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Lax")
-                .path("/api/auth")
+                .path("/api/auth/refresh")
                 .maxAge(0)
                 .build();
 

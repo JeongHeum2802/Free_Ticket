@@ -24,7 +24,6 @@ public class Order {
 
     private Long ticket_id;
     private Long event_id;
-    private String paymentKey = null;
 
     @Column(nullable = false, unique = true, length = 64)
     private String orderId;
@@ -42,4 +41,18 @@ public class Order {
 
     private LocalDateTime orderDate =  LocalDateTime.now();
     private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+
+    @Column(nullable = false)
+    private Integer quantity;
+
+    @Column(nullable = false)
+    private Integer unitPrice;
+
+    @Column(nullable = false)
+    private Long totalAmount;
+
+    private LocalDateTime paidAt;
+
+    @Column(nullable = false, unique = true, length = 36)
+    private String idempotencyKey;
 }

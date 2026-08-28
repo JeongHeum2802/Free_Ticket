@@ -1,5 +1,6 @@
 package wamddu.backend.user.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -169,10 +170,16 @@ public class userService {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        if(!jwtProvider.validateToken(refreshToken)) {
-            response.put("code", "INVALID_REFRESH_TOKEN");
-            response.put("message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
+        try {
+            if(!jwtProvider.validateToken(refreshToken)) {
+                response.put("code", "INVALID_REFRESH_TOKEN");
+                response.put("message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
 
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+        } catch (ExpiredJwtException exception) {
+            response.put("code", "REFRESH_TOKEN_EXPIRED");
+            response.put("message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 

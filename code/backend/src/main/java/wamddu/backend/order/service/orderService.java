@@ -1,16 +1,14 @@
 package wamddu.backend.order.service;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestMapping;
-import wamddu.backend.order.domain.Order;
-import wamddu.backend.order.domain.createOrderRequestDTO;
+import org.springframework.transaction.annotation.Transactional;
+import wamddu.backend.global.exception.ApiException;
+import wamddu.backend.order.domain.*;
 import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.payment.domain.Payment;
+import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.ticketRepository;
 import wamddu.backend.user.domain.User;
@@ -18,105 +16,127 @@ import wamddu.backend.user.repository.userRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
-@RequestMapping("/api/orders")
 public class orderService {
+    private static final DateTimeFormatter ORDER_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final int PAYMENT_WINDOW_MINUTES = 10;
 
     private final orderRepository orderRepository;
     private final ticketRepository ticketRepository;
     private final userRepository userRepository;
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-
-    public static String generateOrderId()
-    {
-        String dateStr = LocalDateTime.now().format(FORMATTER);
-        String randomStr = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
-
-        return "ORD-" +  dateStr + "-" + randomStr;
-    }
+    private final PaymentRepository paymentRepository;
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> createOrder(createOrderRequestDTO requestDTO, UserDetails userDetails) {
+    public CheckoutOrderResponse createOrder(createOrderRequestDTO request, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
+        Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "존재하지 않는 티켓입니다."));
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        Map<String, Object> data = new LinkedHashMap<>();
-
-        User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
-
-        //유효한 사용자인지 확인
-        if(user == null){
-            response.put("code", "UNAUTHORIZED");
-            response.put("message", "로그인이 필요한 서비스입니다.");
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        LocalDateTime now = LocalDateTime.now();
+        if (ticket.getBookingEndtime() == null || !now.isBefore(ticket.getBookingEndtime())) {
+            throw new ApiException(HttpStatus.CONFLICT, "BOOKING_CLOSED", "예매가 마감된 티켓입니다.");
+        }
+        if (ticket.getPrice() == null || ticket.getPrice() < 0
+                || ticket.getTotal_ticket() == null || ticket.getSold_ticket() == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TICKET_DATA", "티켓 판매 정보가 올바르지 않습니다.");
         }
 
-        //존재하는 티켓인지 확인
-        Ticket ticket = ticketRepository.findById(requestDTO.getTicketId()).orElse(null);
-        if(ticket == null) {
-            response.put("code", "TICKET_NOT_FOUND");
-            response.put("message", "존재하지 않는 티켓입니다.");
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        long pendingQuantity = orderRepository.sumActiveQuantity(
+                ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING), now);
+        long remaining = (long) ticket.getTotal_ticket() - ticket.getSold_ticket() - pendingQuantity;
+        if (remaining < request.getQuantity()) {
+            throw new ApiException(HttpStatus.CONFLICT, "TICKET_SOLD_OUT", "선택한 수량만큼 남은 티켓이 없습니다.");
         }
 
-        //티켓 10장 이하 구매인지 확인
-        if(!(requestDTO.getQuantity() >= 1 && requestDTO.getQuantity() <= 10)) {
-            response.put("code", "QUANTITY_ERROR");
-            response.put("message", "티켓은 최소 1장 최대 10장까지 구매 가능합니다.");
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        if (user.getCustomerKey() == null || user.getCustomerKey().isBlank()) {
+            user.setCustomerKey("customer_" + compactUuid());
         }
 
-        //티켓이 남아있는지 확인
-        int remaining = ticket.getTotal_ticket() - ticket.getSold_ticket();
-        if(remaining <= requestDTO.getQuantity()) {
-            response.put("code", "TICKET_NOT_REMAINING");
-            response.put("message", "티켓 수량이 부족합니다.");
+        Order order = new Order();
+        order.setOrderId(generateOrderId());
+        order.setTicket_id(ticket.getId());
+        order.setEvent_id(ticket.getEvent().getId());
+        order.setUser(user);
+        order.setQuantity(request.getQuantity());
+        order.setUnitPrice(ticket.getPrice());
+        order.setTotalAmount((long) ticket.getPrice() * request.getQuantity());
+        order.setStatus(OrderStatus.PENDING);
+        order.setOrderDate(now);
+        order.setExpiresAt(now.plusMinutes(PAYMENT_WINDOW_MINUTES));
+        order.setIdempotencyKey(UUID.randomUUID().toString());
+        orderRepository.save(order);
 
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-        }
-
-        try {
-            ticket.setSold_ticket(ticket.getSold_ticket() + requestDTO.getQuantity());
-            ticketRepository.save(ticket);
-
-            Order order = new Order();
-            order.setOrderId(generateOrderId());
-            order.setTicket_id(ticket.getId());
-            order.setEvent_id(ticket.getEvent().getId());
-            order.setUser(user);
-            orderRepository.save(order);
-
-            response.put("message", "주문이 생성되었습니다.");
-
-            data.put("orderId",  order.getId());
-            data.put("orderName", ticket.getType());
-            data.put("amount", ticket.getPrice() * requestDTO.getQuantity());
-            data.put("quantity", requestDTO.getQuantity());
-            data.put("customerKey", user.getCustomerKey());
-            data.put("customerName", user.getUsername());
-            data.put("customerEmail", user.getEmail());
-            data.put("expiresAt", order.getExpiresAt());
-
-            response.put("data", data);
-
-            return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch(Exception e) {
-            response.put("code", "INTERNAL_SERVER_ERROR");
-            response.put("message", e.getMessage());
-
-            log.error(e.getMessage());
-
-            throw e;
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        return toCheckoutResponse(order, ticket);
     }
 
+    @Transactional(readOnly = true)
+    public CheckoutOrderResponse getCheckoutOrder(String orderId, Long userId) {
+        Order order = orderRepository.findByOrderIdAndUserId(orderId, userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."));
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_ORDER_STATUS", "결제를 진행할 수 없는 주문입니다.");
+        }
+        if (LocalDateTime.now().isAfter(order.getExpiresAt())) {
+            throw new ApiException(HttpStatus.CONFLICT, "ORDER_EXPIRED", "결제 가능 시간이 만료되었습니다.");
+        }
+        Ticket ticket = ticketRepository.findById(order.getTicket_id())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
+        return toCheckoutResponse(order, ticket);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReservationHistoryResponse> getMyReservations(Long userId) {
+        return paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID)
+                .stream()
+                .map(this::toReservationResponse)
+                .toList();
+    }
+
+    private CheckoutOrderResponse toCheckoutResponse(Order order, Ticket ticket) {
+        return new CheckoutOrderResponse(
+                order.getOrderId(),
+                ticket.getEvent().getName() + " - " + ticket.getType(),
+                order.getTotalAmount(),
+                order.getQuantity(),
+                order.getUser().getCustomerKey(),
+                order.getUser().getUsername(),
+                order.getUser().getEmail(),
+                order.getExpiresAt()
+        );
+    }
+
+    private ReservationHistoryResponse toReservationResponse(Payment payment) {
+        Order order = payment.getOrder();
+        Ticket ticket = ticketRepository.findById(order.getTicket_id())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
+        return new ReservationHistoryResponse(
+                order.getOrderId(),
+                ticket.getEvent().getId(),
+                ticket.getEvent().getName(),
+                ticket.getEvent().getMainImageUrl(),
+                ticket.getEvent().getLocation(),
+                ticket.getType(),
+                ticket.getStart_time(),
+                order.getQuantity(),
+                payment.getAmount(),
+                order.getPaidAt(),
+                payment.getMethod(),
+                payment.getReceiptUrl(),
+                order.getStatus().name()
+        );
+    }
+
+    private static String generateOrderId() {
+        String timestamp = LocalDateTime.now().format(ORDER_ID_FORMAT);
+        return "ORD-" + timestamp + "-" + compactUuid().substring(0, 8).toUpperCase();
+    }
+
+    private static String compactUuid() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
 }

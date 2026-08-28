@@ -22,6 +22,8 @@ import java.util.List;
 @Component
 public class JwtProvider {
 
+    private static final long REFRESH_TOKEN_EXPIRATION_MS = 7L * 24 * 60 * 60 * 1000;
+
     private final SecretKey secretKey;
     private final long expirationTime;
 
@@ -48,7 +50,7 @@ public class JwtProvider {
 
     public String generateRefreshToken(Long id) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + 604800);
+        Date validity = new Date(now.getTime() + REFRESH_TOKEN_EXPIRATION_MS);
 
         return Jwts.builder()
                 .subject(id.toString())
