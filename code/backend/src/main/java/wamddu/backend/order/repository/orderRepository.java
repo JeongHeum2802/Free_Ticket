@@ -6,4 +6,5 @@ import wamddu.backend.order.domain.Order;
 
 @Repository
 public interface orderRepository extends JpaRepository<Order, Long> {
+    Order findByOrderId(String OrderId);
 }

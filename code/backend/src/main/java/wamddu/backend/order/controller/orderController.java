@@ -4,9 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import wamddu.backend.order.domain.createOrderRequestDTO;
 import wamddu.backend.order.service.orderService;
 
@@ -22,5 +20,13 @@ public class orderController {
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody createOrderRequestDTO requestDTO,
                                                            @AuthenticationPrincipal UserDetails userDetails) {
         return orderService.createOrder(requestDTO, userDetails);
+    }
+
+    @GetMapping("/api/orders/{orderId}/checkout")
+    public ResponseEntity<Map<String, Object>> checkout(
+            @PathVariable("orderId") String orderId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return orderService.orderCheckOut(orderId, userDetails);
     }
 }

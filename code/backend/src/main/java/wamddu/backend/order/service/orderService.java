@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMapping;
 import wamddu.backend.order.domain.Order;
+import wamddu.backend.order.domain.OrderStatus;
 import wamddu.backend.order.domain.createOrderRequestDTO;
 import wamddu.backend.order.repository.orderRepository;
 import wamddu.backend.ticket.domain.Ticket;
@@ -92,14 +93,16 @@ public class orderService {
             order.setTicket_id(ticket.getId());
             order.setEvent_id(ticket.getEvent().getId());
             order.setUser(user);
+            order.setQuantity(requestDTO.getQuantity());
+            order.setAmount(requestDTO.getQuantity() * ticket.getPrice());
             orderRepository.save(order);
 
             response.put("message", "주문이 생성되었습니다.");
 
-            data.put("orderId",  order.getId());
+            data.put("orderId",  order.getOrderId());
             data.put("orderName", ticket.getType());
-            data.put("amount", ticket.getPrice() * requestDTO.getQuantity());
-            data.put("quantity", requestDTO.getQuantity());
+            data.put("amount", order.getAmount());
+            data.put("quantity", order.getQuantity());
             data.put("customerKey", user.getCustomerKey());
             data.put("customerName", user.getUsername());
             data.put("customerEmail", user.getEmail());
@@ -119,4 +122,46 @@ public class orderService {
         }
     }
 
+    @Transactional
+    public ResponseEntity<Map<String, Object>> orderCheckOut(String orderId, UserDetails userDetails) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        Map<String, Object> data = new LinkedHashMap<>();
+
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
+        if(user == null){
+            response.put("code", "UNAUTHORIZED");
+            response.put("message", "로그인이 필요한 서비스입니다.");
+
+            return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        Order order = orderRepository.findByOrderId(orderId);
+        if(order.getStatus() != OrderStatus.PENDING) {
+            response.put("code", "ORDER_NOT_PENDING");
+            response.put("message", "처리된 주문입니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        if(LocalDateTime.now().isAfter(order.getExpiresAt())) {
+            order.setStatus(OrderStatus.EXPIRED);
+            response.put("code", "ORDER_EXPIRED");
+            response.put("message", "만료된 주문입니다.");
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        response.put("message", "결제할 주문을 조회했습니다.");
+        data.put("orderId", order.getOrderId());
+        data.put("orderName", user.getUsername());
+        data.put("amount", order.getAmount());
+        data.put("quantity",  order.getQuantity());
+        data.put("customerKey", user.getCustomerKey());
+        data.put("customerName", user.getUsername());
+        data.put("customerEmail", user.getEmail());
+        data.put("expiresAt", order.getExpiresAt());
+        response.put("data", data);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 }

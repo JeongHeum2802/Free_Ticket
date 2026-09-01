@@ -42,4 +42,6 @@ public class Order {
 
     private LocalDateTime orderDate =  LocalDateTime.now();
     private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+    private Integer amount;
+    private Integer quantity;
 }
