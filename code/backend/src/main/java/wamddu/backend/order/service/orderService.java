@@ -7,11 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestMapping;
-import wamddu.backend.order.domain.Order;
-import wamddu.backend.order.domain.OrderStatus;
-import wamddu.backend.order.domain.createOrderRequestDTO;
+import wamddu.backend.event.domain.Event;
+import wamddu.backend.event.repository.eventRepository;
+import wamddu.backend.payment.component.TossPaymentClient;
+import wamddu.backend.order.domain.*;
 import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.payment.domain.Payment;
+import wamddu.backend.payment.repository.paymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.ticketRepository;
 import wamddu.backend.user.domain.User;
@@ -20,19 +22,22 @@ import wamddu.backend.user.repository.userRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@RequestMapping("/api/orders")
 public class orderService {
 
     private final orderRepository orderRepository;
     private final ticketRepository ticketRepository;
     private final userRepository userRepository;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private final TossPaymentClient tossPaymentClient;
+    private final paymentRepository paymentRepository;
+    private final eventRepository eventRepository;
 
     public static String generateOrderId()
     {
@@ -148,6 +153,10 @@ public class orderService {
             response.put("code", "ORDER_EXPIRED");
             response.put("message", "만료된 주문입니다.");
 
+            Ticket ticket = ticketRepository.findById(order.getTicket_id()).orElse(null);
+            ticket.setSold_ticket(ticket.getSold_ticket() - order.getQuantity());
+            ticketRepository.save(ticket);
+
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
@@ -160,6 +169,50 @@ public class orderService {
         data.put("customerName", user.getUsername());
         data.put("customerEmail", user.getEmail());
         data.put("expiresAt", order.getExpiresAt());
+        response.put("data", data);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @Transactional
+    public ResponseEntity<Map<String, Object>> getMyReservations(UserDetails userDetails) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        Map<String, Object> data = new LinkedHashMap<>();
+        Map<String, Object> reservations = new LinkedHashMap<>();
+
+        User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
+        if(user == null) {
+            response.put("code", "UNAUTHORIZED");
+            response.put("message", "로그인이 필요한 서비스입니다.");
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        List<Order> orders = orderRepository.findByUserId(Long.parseLong(userDetails.getUsername()));
+        for(Order order : orders) {
+            if(order.getStatus() == OrderStatus.PAID) {
+                Payment payment = order.getPayment();
+                Event event = eventRepository.findById(order.getEvent_id()).orElse(null);
+                Ticket ticket = ticketRepository.findById(order.getTicket_id()).orElse(null);
+
+                reservations.put("orderId", order.getOrderId());
+                reservations.put("eventId", order.getEvent_id());
+                reservations.put("eventName", event.getName());
+                reservations.put("mainImageUrl", event.getMainImageUrl());
+                reservations.put("location", event.getLocation());
+                reservations.put("ticketType", ticket.getType());
+                reservations.put("performanceAt", ticket.getStart_time());
+                reservations.put("quantity", order.getQuantity());
+                reservations.put("amount", order.getAmount());
+                reservations.put("paidAt", payment.getApprovedAt());
+                reservations.put("paymentMethod", payment.getMethod());
+                reservations.put("receiptUrl",  payment.getReceiptUrl());
+                reservations.put("status", order.getStatus());
+            }
+        }
+
+        data.put("reservations", reservations);
+        response.put("message", "예매 내역을 조회했습니다.");
         response.put("data", data);
 
         return ResponseEntity.status(HttpStatus.OK).body(response);

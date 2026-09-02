@@ -6,27 +6,35 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import wamddu.backend.order.domain.createOrderRequestDTO;
+import wamddu.backend.payment.domain.paymentConfirmRequestDTO;
 import wamddu.backend.order.service.orderService;
 
 import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api")
 public class orderController {
 
     private final orderService orderService;
 
-    @PostMapping("/api/orders")
+    @PostMapping("/orders")
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody createOrderRequestDTO requestDTO,
                                                            @AuthenticationPrincipal UserDetails userDetails) {
         return orderService.createOrder(requestDTO, userDetails);
     }
 
-    @GetMapping("/api/orders/{orderId}/checkout")
+    @GetMapping("/orders/{orderId}/checkout")
     public ResponseEntity<Map<String, Object>> checkout(
             @PathVariable("orderId") String orderId,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         return orderService.orderCheckOut(orderId, userDetails);
+    }
+
+
+    @GetMapping("/orders/me/reservations")
+    public ResponseEntity<Map<String, Object>> getMyReservations(@AuthenticationPrincipal UserDetails userDetails) {
+        return orderService.getMyReservations(userDetails);
     }
 }

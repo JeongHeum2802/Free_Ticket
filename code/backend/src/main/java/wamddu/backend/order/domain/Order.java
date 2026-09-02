@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.expression.spel.ast.NullLiteral;
+import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.seat.domain.Seat;
 import wamddu.backend.user.domain.User;
 
@@ -44,4 +45,8 @@ public class Order {
     private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
     private Integer amount;
     private Integer quantity;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_id")
+    private Payment payment;
 }
