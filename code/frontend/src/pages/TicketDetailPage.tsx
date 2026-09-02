@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import NaverMap from "../components/NaverMap";
 
 import { getEventDetail } from "../api/events";
 import {
@@ -149,6 +150,13 @@ export default function TicketDetailPage() {
                   <dt className="font-bold text-gray-700">공연 소개</dt>
                   <dd className="leading-6 text-gray-600">{event.description}</dd>
                 </dl>
+              </div>
+              <div className="mt-8">
+                <h2 className="mb-4 text-lg font-black text-gray-900">
+                  공연장 위치
+               </h2>
+
+                <NaverMap address={event.location} />
               </div>
 
               <div className="mt-8">
