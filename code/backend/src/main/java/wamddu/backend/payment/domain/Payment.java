@@ -6,6 +6,7 @@ import lombok.Setter;
 import wamddu.backend.order.domain.Order;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Setter
@@ -19,6 +20,9 @@ public class Payment {
     private String paymentKey;
     private String method;
     private String status;
-    private LocalDateTime approvedAt;
+    private OffsetDateTime approvedAt;
     private String receiptUrl;
+
+    @OneToOne(mappedBy = "payment", fetch = FetchType.LAZY)
+    private Order order;
 }

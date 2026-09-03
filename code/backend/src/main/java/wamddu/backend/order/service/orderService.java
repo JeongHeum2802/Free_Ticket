@@ -21,10 +21,7 @@ import wamddu.backend.user.repository.userRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -178,7 +175,7 @@ public class orderService {
     public ResponseEntity<Map<String, Object>> getMyReservations(UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
         Map<String, Object> data = new LinkedHashMap<>();
-        Map<String, Object> reservations = new LinkedHashMap<>();
+        List<Object> reservations = new ArrayList<>();
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
         if(user == null) {
@@ -195,24 +192,27 @@ public class orderService {
                 Event event = eventRepository.findById(order.getEvent_id()).orElse(null);
                 Ticket ticket = ticketRepository.findById(order.getTicket_id()).orElse(null);
 
-                reservations.put("orderId", order.getOrderId());
-                reservations.put("eventId", order.getEvent_id());
-                reservations.put("eventName", event.getName());
-                reservations.put("mainImageUrl", event.getMainImageUrl());
-                reservations.put("location", event.getLocation());
-                reservations.put("ticketType", ticket.getType());
-                reservations.put("performanceAt", ticket.getStart_time());
-                reservations.put("quantity", order.getQuantity());
-                reservations.put("amount", order.getAmount());
-                reservations.put("paidAt", payment.getApprovedAt());
-                reservations.put("paymentMethod", payment.getMethod());
-                reservations.put("receiptUrl",  payment.getReceiptUrl());
-                reservations.put("status", order.getStatus());
+                Map<String, Object> reservation = new LinkedHashMap<>();
+                reservation.put("orderId", order.getOrderId());
+                reservation.put("eventId", order.getEvent_id());
+                reservation.put("eventName", event.getName());
+                reservation.put("mainImageUrl", event.getMainImageUrl());
+                reservation.put("location", event.getLocation());
+                reservation.put("ticketType", ticket.getType());
+                reservation.put("performanceAt", ticket.getStart_time());
+                reservation.put("quantity", order.getQuantity());
+                reservation.put("amount", order.getAmount());
+                reservation.put("paidAt", payment.getApprovedAt());
+                reservation.put("paymentMethod", payment.getMethod());
+                reservation.put("receiptUrl",  payment.getReceiptUrl());
+                reservation.put("status", order.getStatus());
+
+                reservations.add(reservation);
             }
         }
 
-        data.put("reservations", reservations);
         response.put("message", "예매 내역을 조회했습니다.");
+        data.put("reservations", reservations);
         response.put("data", data);
 
         return ResponseEntity.status(HttpStatus.OK).body(response);

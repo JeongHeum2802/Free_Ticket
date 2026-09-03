@@ -3,6 +3,7 @@ package wamddu.backend.payment.domain;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 public class paymentConfirmResponseDTO {
@@ -11,7 +12,7 @@ public class paymentConfirmResponseDTO {
     private Integer totalAmount;
     private String method;
     private String status;
-    private LocalDateTime approvedAt;
+    private OffsetDateTime approvedAt;
     private ReceiptDto receipt;
 
     @Getter

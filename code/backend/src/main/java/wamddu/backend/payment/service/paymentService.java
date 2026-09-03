@@ -43,13 +43,13 @@ public class paymentService {
         Map<String, Object> response = new LinkedHashMap<>();
         Map<String, Object> data = new LinkedHashMap<>();
 
-        User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
-        if(user == null){
-            response.put("code", "UNAUTHORIZED");
-            response.put("message", "로그인이 필요한 서비스입니다.");
-
-            return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
+//        User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
+//        if(user == null){
+//            response.put("code", "UNAUTHORIZED");
+//            response.put("message", "로그인이 필요한 서비스입니다.");
+//
+//            return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+//        }
 
         Order order = orderRepository.findByOrderId(request.getOrderId());
         if(order == null) {
@@ -106,7 +106,6 @@ public class paymentService {
 
         order.setPaymentKey(tossResponse.getPaymentKey());
         order.setStatus(OrderStatus.PAID);
-        orderRepository.save(order);
 
         Payment payment = new Payment();
         payment.setPaymentKey(order.getPaymentKey());
@@ -115,6 +114,9 @@ public class paymentService {
         payment.setApprovedAt(tossResponse.getApprovedAt());
         payment.setReceiptUrl(tossResponse.getReceiptUrl());
         paymentRepository.save(payment);
+
+        order.setPayment(payment);
+        orderRepository.save(order);
 
         response.put("message", "결제가 승인되었습니다.");
         data.put("orderId", tossResponse.getOrderId());
