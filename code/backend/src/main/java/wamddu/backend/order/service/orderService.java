@@ -9,11 +9,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import wamddu.backend.event.domain.Event;
 import wamddu.backend.event.repository.eventRepository;
-import wamddu.backend.payment.component.TossPaymentClient;
-import wamddu.backend.order.domain.*;
+import wamddu.backend.global.response.BusinessException;
+import wamddu.backend.global.response.ErrorCode;
+import wamddu.backend.order.domain.Order;
+import wamddu.backend.order.domain.OrderStatus;
+import wamddu.backend.order.domain.createOrderRequestDTO;
 import wamddu.backend.order.repository.orderRepository;
 import wamddu.backend.payment.domain.Payment;
-import wamddu.backend.payment.repository.paymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.ticketRepository;
 import wamddu.backend.user.domain.User;
@@ -32,8 +34,6 @@ public class orderService {
     private final ticketRepository ticketRepository;
     private final userRepository userRepository;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private final TossPaymentClient tossPaymentClient;
-    private final paymentRepository paymentRepository;
     private final eventRepository eventRepository;
 
     public static String generateOrderId()
@@ -54,36 +54,24 @@ public class orderService {
 
         //유효한 사용자인지 확인
         if(user == null){
-            response.put("code", "UNAUTHORIZED");
-            response.put("message", "로그인이 필요한 서비스입니다.");
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         //존재하는 티켓인지 확인
         Ticket ticket = ticketRepository.findById(requestDTO.getTicketId()).orElse(null);
         if(ticket == null) {
-            response.put("code", "TICKET_NOT_FOUND");
-            response.put("message", "존재하지 않는 티켓입니다.");
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            throw new BusinessException(ErrorCode.TICKET_NOT_FOUND);
         }
 
         //티켓 10장 이하 구매인지 확인
         if(!(requestDTO.getQuantity() >= 1 && requestDTO.getQuantity() <= 10)) {
-            response.put("code", "QUANTITY_ERROR");
-            response.put("message", "티켓은 최소 1장 최대 10장까지 구매 가능합니다.");
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            throw new BusinessException(ErrorCode.QUANTITY_ERROR);
         }
 
         //티켓이 남아있는지 확인
         int remaining = ticket.getTotal_ticket() - ticket.getSold_ticket();
         if(remaining <= requestDTO.getQuantity()) {
-            response.put("code", "TICKET_NOT_REMAINING");
-            response.put("message", "티켓 수량이 부족합니다.");
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            throw new BusinessException(ErrorCode.TICKET_NOT_REMAINING);
         }
 
         try {
@@ -114,13 +102,7 @@ public class orderService {
 
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } catch(Exception e) {
-            response.put("code", "INTERNAL_SERVER_ERROR");
-            response.put("message", e.getMessage());
-
-            log.error(e.getMessage());
-
-            throw e;
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -131,30 +113,22 @@ public class orderService {
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
         if(user == null){
-            response.put("code", "UNAUTHORIZED");
-            response.put("message", "로그인이 필요한 서비스입니다.");
-
-            return  ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         Order order = orderRepository.findByOrderId(orderId);
         if(order.getStatus() != OrderStatus.PENDING) {
-            response.put("code", "ORDER_NOT_PENDING");
-            response.put("message", "처리된 주문입니다.");
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            throw new BusinessException(ErrorCode.ORDER_NOT_PENDING);
         }
 
         if(LocalDateTime.now().isAfter(order.getExpiresAt())) {
             order.setStatus(OrderStatus.EXPIRED);
-            response.put("code", "ORDER_EXPIRED");
-            response.put("message", "만료된 주문입니다.");
 
             Ticket ticket = ticketRepository.findById(order.getTicket_id()).orElse(null);
             ticket.setSold_ticket(ticket.getSold_ticket() - order.getQuantity());
             ticketRepository.save(ticket);
 
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            throw new BusinessException(ErrorCode.ORDER_EXPIRED);
         }
 
         response.put("message", "결제할 주문을 조회했습니다.");
@@ -179,10 +153,7 @@ public class orderService {
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername())).orElse(null);
         if(user == null) {
-            response.put("code", "UNAUTHORIZED");
-            response.put("message", "로그인이 필요한 서비스입니다.");
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            throw new  BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         List<Order> orders = orderRepository.findByUserId(Long.parseLong(userDetails.getUsername()));
