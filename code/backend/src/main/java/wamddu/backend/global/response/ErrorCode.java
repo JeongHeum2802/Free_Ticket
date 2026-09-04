@@ -12,6 +12,8 @@ public enum ErrorCode {
     TICKET_NOT_FOUND(HttpStatus.BAD_REQUEST, "TICKET_NOT_FOUND", "존재하지 않는 티켓입니다."),
     QUANTITY_ERROR(HttpStatus.BAD_REQUEST, "QUANTITY_ERROR", "티켓은 최소 1장 최대 10장까지 구매 가능합니다."),
     ORDER_NOT_PENDING(HttpStatus.BAD_REQUEST, "ORDER_NOT_PENDING", "처리된 주문입니다."),
+    ORDER_NOT_FOUND(HttpStatus.BAD_REQUEST, "ORDER_NOT_FOUND", "잘못된 OrderId입니다."),
+    INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "INVALID_AMOUNT", "수량이 다릅니다."),
 
     //401 UNAUTHORIZED
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요한 서비스입니다."),
@@ -24,7 +26,10 @@ public enum ErrorCode {
     ORDER_EXPIRED(HttpStatus.CONFLICT, "ORDER_EXPIRED", "만료된 주문입니다."),
 
     //500 INTERNAL SERVER ERROR
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.");
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
+
+    //502 TOSS_CONFIRM_FAILED
+    TOSS_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "TOSS_CONFIRM_FAILED", "토스 결제 승인이 실패했습니다.");
 
     private final HttpStatus status;
     private final String code;

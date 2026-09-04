@@ -1,16 +1,17 @@
 package wamddu.backend.payment.domain;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import wamddu.backend.order.domain.Order;
+import wamddu.backend.payment.dto.response.ConfirmResponseDTO;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Entity
-@Setter
 @Getter
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor
 public class Payment {
 
     @Id
@@ -25,4 +26,14 @@ public class Payment {
 
     @OneToOne(mappedBy = "payment", fetch = FetchType.LAZY)
     private Order order;
+
+    public static Payment create(ConfirmResponseDTO response) {
+        return Payment.builder()
+                .paymentKey(response.getPaymentKey())
+                .method(response.getMethod())
+                .status(response.getStatus())
+                .approvedAt(response.getApprovedAt())
+                .receiptUrl(response.getReceiptUrl())
+                .build();
+    }
 }
