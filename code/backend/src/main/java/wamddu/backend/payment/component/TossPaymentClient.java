@@ -7,8 +7,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import wamddu.backend.payment.domain.paymentConfirmRequestDTO;
-import wamddu.backend.payment.domain.paymentConfirmResponseDTO;
+import wamddu.backend.payment.dto.request.PaymentConfirmRequestDTO;
+import wamddu.backend.payment.dto.response.PaymentConfirmResponseDTO;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -34,7 +34,7 @@ public class TossPaymentClient {
         this.basicAuthHeader = "Basic " + encodedKey;
     }
 
-    public paymentConfirmResponseDTO sendConfirmRequest(paymentConfirmRequestDTO request) {
+    public PaymentConfirmResponseDTO sendConfirmRequest(PaymentConfirmRequestDTO request) {
         return restClient.post()
                 .uri(confirmUrl)
                 .header(HttpHeaders.AUTHORIZATION, basicAuthHeader)
@@ -45,7 +45,7 @@ public class TossPaymentClient {
                     String errorBody = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                     throw new RuntimeException("토스 결제 승인 실패: " + errorBody);
                 })
-                .body(paymentConfirmResponseDTO.class);
+                .body(PaymentConfirmResponseDTO.class);
     }
 
     public void cancelPayment(String paymentKey, String cancelReason) {
