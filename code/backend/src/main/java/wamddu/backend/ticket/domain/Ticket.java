@@ -44,4 +44,8 @@ public class Ticket {
     public Boolean isAvailableBooking() {
         return !isSoldOut() && LocalDateTime.now().isBefore(this.bookingEndtime);
     }
+
+    public void sell(Integer quantity) {
+        sold_ticket += quantity;
+    }
 }
