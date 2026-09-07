@@ -4,20 +4,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.Map;
+import wamddu.backend.global.response.ErrorResponse;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<Map<String, String>> handleApiException(ApiException exception) {
+    public ResponseEntity<ErrorResponse> handleApiException(ApiException exception) {
         return ResponseEntity.status(exception.getStatus())
-                .body(Map.of("code", exception.getCode(), "message", exception.getMessage()));
+                .body(ErrorResponse.of(exception.getCode(), exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         return ResponseEntity.badRequest()
-                .body(Map.of("code", "INVALID_REQUEST", "message", "요청 값을 확인해 주세요."));
+                .body(ErrorResponse.of("INVALID_REQUEST", "요청 값을 확인해 주세요."));
     }
 }

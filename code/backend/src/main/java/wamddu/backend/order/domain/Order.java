@@ -1,11 +1,7 @@
 package wamddu.backend.order.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.springframework.expression.spel.ast.NullLiteral;
+import lombok.*;
 import wamddu.backend.seat.domain.Seat;
 import wamddu.backend.user.domain.User;
 
@@ -15,6 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "orders")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Order {
@@ -32,14 +29,19 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Builder.Default
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seat_id", nullable = true)
     private Seat seat = null;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
-    private LocalDateTime orderDate =  LocalDateTime.now();
+    @Builder.Default
+    private LocalDateTime orderDate = LocalDateTime.now();
+
+    @Builder.Default
     private LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
 
     @Column(nullable = false)
@@ -48,11 +50,37 @@ public class Order {
     @Column(nullable = false)
     private Integer unitPrice;
 
-    @Column(nullable = false)
+    @Column(name = "total_amount", nullable = false)
     private Long totalAmount;
 
     private LocalDateTime paidAt;
 
     @Column(nullable = false, unique = true, length = 36)
     private String idempotencyKey;
+
+    public static Order createPendingOrder(
+            String orderId,
+            User user,
+            Long ticketId,
+            Long eventId,
+            int quantity,
+            int unitPrice,
+            String idempotencyKey,
+            int paymentWindowMinutes
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        return Order.builder()
+                .orderId(orderId)
+                .user(user)
+                .ticket_id(ticketId)
+                .event_id(eventId)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .totalAmount((long) unitPrice * quantity)
+                .status(OrderStatus.PENDING)
+                .orderDate(now)
+                .expiresAt(now.plusMinutes(paymentWindowMinutes))
+                .idempotencyKey(idempotencyKey)
+                .build();
+    }
 }

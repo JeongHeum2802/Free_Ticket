@@ -1,4 +1,4 @@
-package wamddu.backend.payment.domain;
+package wamddu.backend.payment.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

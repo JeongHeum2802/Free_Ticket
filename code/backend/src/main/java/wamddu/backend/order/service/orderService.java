@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.*;
+import wamddu.backend.order.dto.request.*;
+import wamddu.backend.order.dto.response.*;
 import wamddu.backend.order.repository.orderRepository;
 import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.payment.repository.PaymentRepository;
@@ -31,7 +33,7 @@ public class orderService {
     private final PaymentRepository paymentRepository;
 
     @Transactional
-    public CheckoutOrderResponse createOrder(createOrderRequestDTO request, Long userId) {
+    public CheckoutOrderResponse createOrder(CreateOrderRequestDTO request, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
         Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())
@@ -57,18 +59,16 @@ public class orderService {
             user.setCustomerKey("customer_" + compactUuid());
         }
 
-        Order order = new Order();
-        order.setOrderId(generateOrderId());
-        order.setTicket_id(ticket.getId());
-        order.setEvent_id(ticket.getEvent().getId());
-        order.setUser(user);
-        order.setQuantity(request.getQuantity());
-        order.setUnitPrice(ticket.getPrice());
-        order.setTotalAmount((long) ticket.getPrice() * request.getQuantity());
-        order.setStatus(OrderStatus.PENDING);
-        order.setOrderDate(now);
-        order.setExpiresAt(now.plusMinutes(PAYMENT_WINDOW_MINUTES));
-        order.setIdempotencyKey(UUID.randomUUID().toString());
+        Order order = Order.createPendingOrder(
+                generateOrderId(),
+                user,
+                ticket.getId(),
+                ticket.getEvent().getId(),
+                request.getQuantity(),
+                ticket.getPrice(),
+                UUID.randomUUID().toString(),
+                PAYMENT_WINDOW_MINUTES
+        );
         orderRepository.save(order);
 
         return toCheckoutResponse(order, ticket);
@@ -90,45 +90,23 @@ public class orderService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReservationHistoryResponse> getMyReservations(Long userId) {
-        return paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID)
+    public ReservationListResponse getMyReservations(Long userId) {
+        List<ReservationHistoryResponse> list = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID)
                 .stream()
                 .map(this::toReservationResponse)
                 .toList();
+        return new ReservationListResponse(list);
     }
 
     private CheckoutOrderResponse toCheckoutResponse(Order order, Ticket ticket) {
-        return new CheckoutOrderResponse(
-                order.getOrderId(),
-                ticket.getEvent().getName() + " - " + ticket.getType(),
-                order.getTotalAmount(),
-                order.getQuantity(),
-                order.getUser().getCustomerKey(),
-                order.getUser().getUsername(),
-                order.getUser().getEmail(),
-                order.getExpiresAt()
-        );
+        return CheckoutOrderResponse.of(order, ticket);
     }
 
     private ReservationHistoryResponse toReservationResponse(Payment payment) {
         Order order = payment.getOrder();
         Ticket ticket = ticketRepository.findById(order.getTicket_id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
-        return new ReservationHistoryResponse(
-                order.getOrderId(),
-                ticket.getEvent().getId(),
-                ticket.getEvent().getName(),
-                ticket.getEvent().getMainImageUrl(),
-                ticket.getEvent().getLocation(),
-                ticket.getType(),
-                ticket.getStart_time(),
-                order.getQuantity(),
-                payment.getAmount(),
-                order.getPaidAt(),
-                payment.getMethod(),
-                payment.getReceiptUrl(),
-                order.getStatus().name()
-        );
+        return ReservationHistoryResponse.of(payment, ticket);
     }
 
     private static String generateOrderId() {

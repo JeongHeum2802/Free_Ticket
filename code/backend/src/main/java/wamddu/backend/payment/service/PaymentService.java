@@ -9,9 +9,9 @@ import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
 import wamddu.backend.order.repository.orderRepository;
 import wamddu.backend.payment.client.TossPaymentsClient;
-import wamddu.backend.payment.domain.ConfirmPaymentRequest;
 import wamddu.backend.payment.domain.Payment;
-import wamddu.backend.payment.domain.PaymentResponse;
+import wamddu.backend.payment.dto.request.ConfirmPaymentRequest;
+import wamddu.backend.payment.dto.response.PaymentResponse;
 import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.ticketRepository;
@@ -74,26 +74,19 @@ public class PaymentService {
         order.setStatus(OrderStatus.PAID);
         order.setPaidAt(approvedAt);
 
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setPaymentKey(toss.paymentKey());
-        payment.setAmount(toss.totalAmount());
-        payment.setMethod(toss.method());
-        payment.setStatus(toss.status());
-        payment.setApprovedAt(approvedAt);
-        payment.setReceiptUrl(toss.receipt() == null ? null : toss.receipt().url());
+        Payment payment = Payment.createPayment(
+                order,
+                toss.paymentKey(),
+                toss.totalAmount(),
+                toss.method(),
+                toss.status(),
+                approvedAt,
+                toss.receipt() == null ? null : toss.receipt().url()
+        );
         return toResponse(paymentRepository.save(payment));
     }
 
     private PaymentResponse toResponse(Payment payment) {
-        return new PaymentResponse(
-                payment.getOrder().getOrderId(),
-                payment.getPaymentKey(),
-                payment.getAmount(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getApprovedAt(),
-                payment.getReceiptUrl()
-        );
+        return PaymentResponse.from(payment);
     }
 }
