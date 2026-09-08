@@ -12,11 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import wamddu.backend.global.security.JwtProvider;
+import wamddu.backend.user.domain.LoginRequestDTO;
 import wamddu.backend.user.domain.Role;
+import wamddu.backend.user.domain.SignUpRequestDTO;
 import wamddu.backend.user.domain.User;
-import wamddu.backend.user.domain.loginRequestDTO;
-import wamddu.backend.user.domain.signUpRequestDTO;
-import wamddu.backend.user.repository.userRepository;
+import wamddu.backend.user.repository.UserRepository;
 
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +29,7 @@ import static org.mockito.BDDMockito.given;
 class UserServiceTest {
 
     @Mock
-    private userRepository userRepository;
+    private UserRepository userRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -38,7 +38,7 @@ class UserServiceTest {
     private JwtProvider jwtProvider;
 
     @InjectMocks
-    private userService userService;
+    private UserService userService;
 
     private User user;
 
@@ -51,7 +51,7 @@ class UserServiceTest {
     @DisplayName("회원가입 성공 테스트")
     void signUp_Success() {
         // given
-        signUpRequestDTO dto = new signUpRequestDTO();
+        SignUpRequestDTO dto = new SignUpRequestDTO();
         dto.setUsername("홍길동");
         dto.setPassword("password123!");
         dto.setEmail("user@example.com");
@@ -74,7 +74,7 @@ class UserServiceTest {
     @DisplayName("회원가입 실패 - 이메일 중복")
     void signUp_EmailExists_ReturnsConflict() {
         // given
-        signUpRequestDTO dto = new signUpRequestDTO();
+        SignUpRequestDTO dto = new SignUpRequestDTO();
         dto.setEmail("user@example.com");
 
         given(userRepository.existsByEmail("user@example.com")).willReturn(true);
@@ -91,7 +91,7 @@ class UserServiceTest {
     @DisplayName("로그인 성공 테스트")
     void login_Success() {
         // given
-        loginRequestDTO dto = new loginRequestDTO();
+        LoginRequestDTO dto = new LoginRequestDTO();
         dto.setEmail("user@example.com");
         dto.setPassword("password123!");
 

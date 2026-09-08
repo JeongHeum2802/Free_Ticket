@@ -7,21 +7,21 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import wamddu.backend.global.response.ApiResponse;
-import wamddu.backend.order.dto.request.CreateOrderRequestDTO;
+import wamddu.backend.order.dto.request.CreateOrderRequest;
 import wamddu.backend.order.dto.response.CheckoutOrderResponse;
 import wamddu.backend.order.dto.response.ReservationListResponse;
-import wamddu.backend.order.service.orderService;
+import wamddu.backend.order.service.OrderService;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class orderController {
-    private final orderService orderService;
+public class OrderController {
+    private final OrderService orderService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CheckoutOrderResponse> createOrder(
-            @Valid @RequestBody CreateOrderRequestDTO request,
+            @Valid @RequestBody CreateOrderRequest request,
             @AuthenticationPrincipal UserDetails principal
     ) {
         return ApiResponse.success("주문이 생성되었습니다.", orderService.createOrder(request, userId(principal)));

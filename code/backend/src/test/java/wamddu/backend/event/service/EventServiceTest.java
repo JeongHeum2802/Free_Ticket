@@ -7,23 +7,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import wamddu.backend.event.domain.Event;
-import wamddu.backend.event.domain.getEventsResponseDto;
-import wamddu.backend.event.domain.weeklyRankingResponseDto;
-import wamddu.backend.event.domain.whatshotResponseDto;
-import wamddu.backend.event.repository.eventRepository;
+import wamddu.backend.event.dto.response.*;
+import wamddu.backend.event.repository.EventRepository;
+import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.ticket.domain.Ticket;
-import wamddu.backend.ticket.repository.ticketRepository;
+import wamddu.backend.ticket.repository.TicketRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -32,13 +29,13 @@ import static org.mockito.BDDMockito.given;
 class EventServiceTest {
 
     @Mock
-    private eventRepository eventRepository;
+    private EventRepository eventRepository;
 
     @Mock
-    private ticketRepository ticketRepository;
+    private TicketRepository ticketRepository;
 
     @InjectMocks
-    private eventService eventService;
+    private EventService eventService;
 
     private Event event;
 
@@ -61,39 +58,39 @@ class EventServiceTest {
     @DisplayName("이벤트 목록 조회 성공 테스트 - 전체 카테고리")
     void getEvents_AllCategories_Success() {
         // given
-        getEventsResponseDto dto = new getEventsResponseDto(
+        EventSummaryResponse dto = new EventSummaryResponse(
                 101L, "오페라의 유령", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 "드림씨어터", "http://example.com/main.jpg", "musical", "최고의 뮤지컬"
         );
         given(eventRepository.getEventsByCategory(null)).willReturn(List.of(dto));
 
         // when
-        ResponseEntity<Map<String, Object>> response = eventService.getEvents(null);
+        EventListResponse response = eventService.getEvents(null);
 
         // then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsKey("data");
+        assertThat(response).isNotNull();
+        assertThat(response.events()).hasSize(1);
+        assertThat(response.events().get(0).getName()).isEqualTo("오페라의 유령");
     }
 
     @Test
     @DisplayName("이벤트 목록 조회 실패 - 유효하지 않은 카테고리")
-    void getEvents_InvalidCategory_ReturnsBadRequest() {
+    void getEvents_InvalidCategory_ThrowsApiException() {
         // given
         given(eventRepository.findAllCategories()).willReturn(List.of("musical", "concert"));
 
-        // when
-        ResponseEntity<Map<String, Object>> response = eventService.getEvents("invalid_category");
-
-        // then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).containsEntry("code", "INVALID_EVENT_CATEGORY");
+        // when & then
+        assertThatThrownBy(() -> eventService.getEvents("invalid_category"))
+                .isInstanceOf(ApiException.class)
+                .extracting("code")
+                .isEqualTo("INVALID_EVENT_CATEGORY");
     }
 
     @Test
     @DisplayName("WHAT'S HOT 이벤트 조회 성공 테스트")
     void whatshot_Success() {
         // given
-        whatshotResponseDto dto = new whatshotResponseDto(
+        WhatsHotEventResponse dto = new WhatsHotEventResponse(
                 1L, 101L, "오페라의 유령", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 "드림씨어터", "http://example.com/banner.jpg", "http://example.com/main.jpg", "musical"
         );
@@ -101,11 +98,23 @@ class EventServiceTest {
         given(eventRepository.whatshot(eq("musical"), any())).willReturn(List.of(dto));
 
         // when
-        ResponseEntity<Map<String, Object>> response = eventService.whatshot("musical", 5);
+        WhatsHotResponse response = eventService.whatshot("musical", 5);
 
         // then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("message", "WHAT'S HOT 이벤트 조회에 성공했습니다.");
+        assertThat(response).isNotNull();
+        assertThat(response.category()).isEqualTo("musical");
+        assertThat(response.events()).hasSize(1);
+        assertThat(response.events().get(0).getName()).isEqualTo("오페라의 유령");
+    }
+
+    @Test
+    @DisplayName("WHAT'S HOT 조회 실패 - 유효하지 않은 limit")
+    void whatshot_InvalidLimit_ThrowsApiException() {
+        // when & then
+        assertThatThrownBy(() -> eventService.whatshot("musical", 0))
+                .isInstanceOf(ApiException.class)
+                .extracting("code")
+                .isEqualTo("INVALID_LIMIT");
     }
 
     @Test
@@ -118,10 +127,26 @@ class EventServiceTest {
         given(ticketRepository.getAllEventTickets(101L)).willReturn(List.of(ticket));
 
         // when
-        ResponseEntity<Map<String, Object>> response = eventService.getDetail(101L);
+        EventDetailResponse response = eventService.getDetail(101L);
 
         // then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsKey("data");
+        assertThat(response).isNotNull();
+        assertThat(response.event()).isNotNull();
+        assertThat(response.event().getName()).isEqualTo("오페라의 유령");
+        assertThat(response.event().getRunningTime()).isEqualTo(150);
+        assertThat(response.ticketOptions()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("이벤트 상세 조회 실패 - 존재하지 않는 이벤트")
+    void getDetail_NotFound_ThrowsApiException() {
+        // given
+        given(eventRepository.findById(999L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> eventService.getDetail(999L))
+                .isInstanceOf(ApiException.class)
+                .extracting("code")
+                .isEqualTo("EVENT_NOT_FOUND");
     }
 }

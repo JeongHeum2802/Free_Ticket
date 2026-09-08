@@ -8,13 +8,13 @@ import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.*;
 import wamddu.backend.order.dto.request.*;
 import wamddu.backend.order.dto.response.*;
-import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.order.repository.OrderRepository;
 import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
-import wamddu.backend.ticket.repository.ticketRepository;
+import wamddu.backend.ticket.repository.TicketRepository;
 import wamddu.backend.user.domain.User;
-import wamddu.backend.user.repository.userRepository;
+import wamddu.backend.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,17 +23,17 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class orderService {
+public class OrderService {
     private static final DateTimeFormatter ORDER_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final int PAYMENT_WINDOW_MINUTES = 10;
 
-    private final orderRepository orderRepository;
-    private final ticketRepository ticketRepository;
-    private final userRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final TicketRepository ticketRepository;
+    private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
 
     @Transactional
-    public CheckoutOrderResponse createOrder(CreateOrderRequestDTO request, Long userId) {
+    public CheckoutOrderResponse createOrder(CreateOrderRequest request, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
         Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())

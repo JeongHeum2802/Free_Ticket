@@ -10,24 +10,24 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import wamddu.backend.user.domain.*;
-import wamddu.backend.user.service.userService;
+import wamddu.backend.user.service.UserService;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-public class userController {
+public class UserController {
 
-    private final userService userService;
+    private final UserService userService;
 
     @PostMapping("/api/auth/signup")
-    public ResponseEntity<Map<String,Object>> signUp(@RequestBody signUpRequestDTO requestDTO) {
+    public ResponseEntity<Map<String,Object>> signUp(@RequestBody SignUpRequestDTO requestDTO) {
         return  userService.signUp(requestDTO);
     }
 
     @PostMapping("/api/auth/login")
-    public ResponseEntity<Map<String,Object>> login(@RequestBody loginRequestDTO requestDTO) {
+    public ResponseEntity<Map<String,Object>> login(@RequestBody LoginRequestDTO requestDTO) {
         return userService.login(requestDTO);
     }
 
@@ -61,14 +61,14 @@ public class userController {
 
     @PostMapping("/api/users/me")
     public ResponseEntity<Map<String, Object>> updateMyInfo(
-            @RequestBody updateRequestDTO requestDTO,
+            @RequestBody UpdateRequestDTO requestDTO,
             @AuthenticationPrincipal UserDetails userDetails) {
         return userService.updateMyInfo(requestDTO, userDetails);
     }
 
     @PatchMapping("/api/users/me/password")
     public ResponseEntity<Map<String, Object>> updateMyPassword(
-            @RequestBody updatePasswordRequestDTO requestDTO,
+            @RequestBody UpdatePasswordRequestDTO requestDTO,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         return userService.updateMyPassword(requestDTO, userDetails);
@@ -76,7 +76,7 @@ public class userController {
 
     @DeleteMapping("/api/users/me")
     public ResponseEntity<Map<String, Object>> deleteMyAccount(
-            @RequestBody deleteUserRequestDTO requestDTO,
+            @RequestBody DeleteUserRequestDTO requestDTO,
             @AuthenticationPrincipal UserDetails userDetails,
             HttpServletResponse response) {
         return userService.deleteMyAccount(requestDTO, userDetails, response);

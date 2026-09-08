@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CreateOrderRequestDTO {
+public class CreateOrderRequest {
     @NotNull
     private Long ticketId;
 

@@ -1,4 +1,4 @@
-package wamddu.backend.event.domain;
+package wamddu.backend.event.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
@@ -9,9 +9,8 @@ import java.time.LocalDate;
 @Getter
 @AllArgsConstructor
 @JsonPropertyOrder({
-        "rank", "id", "name", "startDate", "endDate", "location", "mainImageUrl", "category"})
-public class weeklyRankingResponseDto {
-    private Long rank;
+        "id", "name", "startDate", "endDate", "location", "mainImageUrl", "category", "description"})
+public class EventSummaryResponse {
     private Long id;
     private String name;
     private LocalDate startDate;
@@ -19,4 +18,5 @@ public class weeklyRankingResponseDto {
     private String location;
     private String mainImageUrl;
     private String category;
+    private String description;
 }

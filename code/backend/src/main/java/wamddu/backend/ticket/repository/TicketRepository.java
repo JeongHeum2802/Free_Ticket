@@ -12,7 +12,7 @@ import java.util.Optional;
 import jakarta.persistence.LockModeType;
 
 @Repository
-public interface ticketRepository extends JpaRepository<Ticket,Long> {
+public interface TicketRepository extends JpaRepository<Ticket,Long> {
 
     @Query("SELECT T FROM Ticket T WHERE T.event.id = :id " +
             "ORDER BY T.start_time ASC, T.price DESC")

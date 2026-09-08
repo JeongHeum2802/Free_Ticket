@@ -7,22 +7,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import wamddu.backend.event.domain.Event;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
-import wamddu.backend.order.dto.request.CreateOrderRequestDTO;
+import wamddu.backend.order.dto.request.CreateOrderRequest;
 import wamddu.backend.order.dto.response.CheckoutOrderResponse;
 import wamddu.backend.order.dto.response.ReservationListResponse;
-import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.order.repository.OrderRepository;
 import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
-import wamddu.backend.ticket.repository.ticketRepository;
+import wamddu.backend.ticket.repository.TicketRepository;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
-import wamddu.backend.user.repository.userRepository;
+import wamddu.backend.user.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,19 +39,19 @@ import static org.mockito.Mockito.verify;
 class OrderServiceTest {
 
     @Mock
-    private orderRepository orderRepository;
+    private OrderRepository orderRepository;
 
     @Mock
-    private ticketRepository ticketRepository;
+    private TicketRepository ticketRepository;
 
     @Mock
-    private userRepository userRepository;
+    private UserRepository userRepository;
 
     @Mock
     private PaymentRepository paymentRepository;
 
     @InjectMocks
-    private orderService orderService;
+    private OrderService orderService;
 
     private User user;
     private Event event;
@@ -86,7 +85,7 @@ class OrderServiceTest {
     @DisplayName("주문 생성 성공 테스트")
     void createOrder_Success() {
         // given
-        CreateOrderRequestDTO request = new CreateOrderRequestDTO();
+        CreateOrderRequest request = new CreateOrderRequest();
         request.setTicketId(1L);
         request.setQuantity(2);
 
@@ -109,7 +108,7 @@ class OrderServiceTest {
     @DisplayName("주문 생성 실패 - 티켓 잔여 수량 부족")
     void createOrder_SoldOut_ThrowsApiException() {
         // given
-        CreateOrderRequestDTO request = new CreateOrderRequestDTO();
+        CreateOrderRequest request = new CreateOrderRequest();
         request.setTicketId(1L);
         request.setQuantity(100); // 100개 요청, 잔여 수량 90개
 
@@ -129,7 +128,7 @@ class OrderServiceTest {
     void createOrder_BookingClosed_ThrowsApiException() {
         // given
         ticket.setBookingEndtime(LocalDateTime.now().minusDays(1)); // 마감됨
-        CreateOrderRequestDTO request = new CreateOrderRequestDTO();
+        CreateOrderRequest request = new CreateOrderRequest();
         request.setTicketId(1L);
         request.setQuantity(1);
 

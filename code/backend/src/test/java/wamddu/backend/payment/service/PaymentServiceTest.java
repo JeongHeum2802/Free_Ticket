@@ -7,18 +7,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
-import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.order.repository.OrderRepository;
 import wamddu.backend.payment.client.TossPaymentsClient;
 import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.payment.dto.request.ConfirmPaymentRequest;
 import wamddu.backend.payment.dto.response.PaymentResponse;
 import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
-import wamddu.backend.ticket.repository.ticketRepository;
+import wamddu.backend.ticket.repository.TicketRepository;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
 
@@ -35,13 +34,13 @@ import static org.mockito.Mockito.verify;
 class PaymentServiceTest {
 
     @Mock
-    private orderRepository orderRepository;
+    private OrderRepository orderRepository;
 
     @Mock
     private PaymentRepository paymentRepository;
 
     @Mock
-    private ticketRepository ticketRepository;
+    private TicketRepository ticketRepository;
 
     @Mock
     private TossPaymentsClient tossPaymentsClient;

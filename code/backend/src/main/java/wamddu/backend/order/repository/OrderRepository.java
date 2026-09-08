@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 @Repository
-public interface orderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderIdAndUserId(String orderId, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

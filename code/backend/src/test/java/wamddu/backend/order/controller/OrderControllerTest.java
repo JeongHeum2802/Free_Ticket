@@ -20,11 +20,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.exception.ApiExceptionHandler;
-import wamddu.backend.order.dto.request.CreateOrderRequestDTO;
+import wamddu.backend.order.dto.request.CreateOrderRequest;
 import wamddu.backend.order.dto.response.CheckoutOrderResponse;
 import wamddu.backend.order.dto.response.ReservationHistoryResponse;
 import wamddu.backend.order.dto.response.ReservationListResponse;
-import wamddu.backend.order.service.orderService;
+import wamddu.backend.order.service.OrderService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,10 +43,10 @@ class OrderControllerTest {
     private MockMvc mockMvc;
 
     @Mock
-    private orderService orderService;
+    private OrderService orderService;
 
     @InjectMocks
-    private orderController orderController;
+    private OrderController orderController;
 
     private UserDetails userDetails;
 
@@ -82,7 +82,7 @@ class OrderControllerTest {
                 LocalDateTime.now().plusMinutes(10)
         );
 
-        given(orderService.createOrder(any(CreateOrderRequestDTO.class), eq(1L)))
+        given(orderService.createOrder(any(CreateOrderRequest.class), eq(1L)))
                 .willReturn(mockResponse);
 
         String requestJson = """

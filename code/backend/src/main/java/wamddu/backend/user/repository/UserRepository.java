@@ -7,7 +7,7 @@ import wamddu.backend.user.domain.User;
 import java.util.Optional;
 
 @Repository
-public interface userRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     boolean existsByPhonenumber(String phonenumber);
     Optional<User> findById(Long id);

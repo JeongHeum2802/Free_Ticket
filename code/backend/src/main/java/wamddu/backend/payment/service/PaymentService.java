@@ -7,23 +7,23 @@ import org.springframework.transaction.annotation.Transactional;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
-import wamddu.backend.order.repository.orderRepository;
+import wamddu.backend.order.repository.OrderRepository;
 import wamddu.backend.payment.client.TossPaymentsClient;
 import wamddu.backend.payment.domain.Payment;
 import wamddu.backend.payment.dto.request.ConfirmPaymentRequest;
 import wamddu.backend.payment.dto.response.PaymentResponse;
 import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
-import wamddu.backend.ticket.repository.ticketRepository;
+import wamddu.backend.ticket.repository.TicketRepository;
 
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
-    private final orderRepository orderRepository;
+    private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final ticketRepository ticketRepository;
+    private final TicketRepository ticketRepository;
     private final TossPaymentsClient tossPaymentsClient;
 
     @Transactional

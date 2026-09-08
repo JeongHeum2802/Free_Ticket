@@ -14,7 +14,7 @@ import wamddu.backend.user.domain.User;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_event_director",
-                        columnNames = {"evend_id", "user_id"}
+                        columnNames = {"event_id", "user_id"}
                 )
         }
 )

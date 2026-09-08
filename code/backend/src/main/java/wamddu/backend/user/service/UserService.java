@@ -13,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import wamddu.backend.global.security.JwtProvider;
 import wamddu.backend.user.domain.*;
-import wamddu.backend.user.repository.userRepository;
+import wamddu.backend.user.repository.UserRepository;
 
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -22,10 +22,10 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class userService {
+public class UserService {
 
     private final PasswordEncoder passwordEncoder;
-    private final userRepository userRepository;
+    private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
@@ -40,7 +40,7 @@ public class userService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> signUp(signUpRequestDTO signUpRequestDTO) {
+    public ResponseEntity<Map<String, Object>> signUp(SignUpRequestDTO signUpRequestDTO) {
         Map<String, Object> response = new LinkedHashMap<>();
         Map<String, String> error = new LinkedHashMap<>();
 
@@ -98,7 +98,7 @@ public class userService {
             user.setCustomerKey(generateCustomerKey());
             User savedUser = userRepository.save(user);
 
-            userResponseDTO responseUser = new userResponseDTO();
+            UserResponseDTO responseUser = new UserResponseDTO();
             responseUser.setId(savedUser.getId());
             responseUser.setUsername(savedUser.getUsername());
             responseUser.setEmail(savedUser.getEmail());
@@ -117,7 +117,7 @@ public class userService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> login(loginRequestDTO loginRequestDTO) {
+    public ResponseEntity<Map<String, Object>> login(LoginRequestDTO loginRequestDTO) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         User user = userRepository.findByEmail(loginRequestDTO.getEmail());
@@ -131,7 +131,7 @@ public class userService {
 
         String token = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
 
-        userResponseDTO responseUser = new userResponseDTO();
+        UserResponseDTO responseUser = new UserResponseDTO();
         responseUser.setId(user.getId());
         responseUser.setUsername(user.getUsername());
         responseUser.setEmail(user.getEmail());
@@ -213,7 +213,7 @@ public class userService {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
 
-        userResponseDTO responseUser = new userResponseDTO();
+        UserResponseDTO responseUser = new UserResponseDTO();
         responseUser.setId(user.getId());
         responseUser.setUsername(user.getUsername());
         responseUser.setEmail(user.getEmail());
@@ -228,11 +228,11 @@ public class userService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> updateMyInfo(updateRequestDTO updateRequestDTO, UserDetails userDetails) {
+    public ResponseEntity<Map<String, Object>> updateMyInfo(UpdateRequestDTO updateRequestDTO, UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
-                .orElseThrow(() -> new IllegalArgumentException("서버 오륲"));
+                .orElseThrow(() -> new IllegalArgumentException("서버 오류"));
 
         if(updateRequestDTO.getEmail() != null){
             if(userRepository.existsByEmail(updateRequestDTO.getEmail())){
@@ -269,7 +269,7 @@ public class userService {
 
         userRepository.save(user);
 
-        userResponseDTO responseUser = new userResponseDTO();
+        UserResponseDTO responseUser = new UserResponseDTO();
         responseUser.setId(user.getId());
         responseUser.setUsername(user.getUsername());
         responseUser.setEmail(user.getEmail());
@@ -284,7 +284,7 @@ public class userService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> updateMyPassword(updatePasswordRequestDTO requestDTO, UserDetails userDetails) {
+    public ResponseEntity<Map<String, Object>> updateMyPassword(UpdatePasswordRequestDTO requestDTO, UserDetails userDetails) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
@@ -313,7 +313,7 @@ public class userService {
     }
 
     @Transactional
-    public ResponseEntity<Map<String, Object>> deleteMyAccount(deleteUserRequestDTO deleteUserRequestDTO,
+    public ResponseEntity<Map<String, Object>> deleteMyAccount(DeleteUserRequestDTO deleteUserRequestDTO,
                                                                UserDetails userDetails,
                                                                HttpServletResponse httpServletResponse) {
         Map<String, Object> response = new LinkedHashMap<>();
