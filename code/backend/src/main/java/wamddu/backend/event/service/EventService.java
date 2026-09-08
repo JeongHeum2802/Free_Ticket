@@ -10,7 +10,7 @@ import wamddu.backend.event.domain.Event;
 import wamddu.backend.event.dto.response.*;
 import wamddu.backend.event.repository.EventRepository;
 import wamddu.backend.global.exception.ApiException;
-import wamddu.backend.ticket.domain.EventTicketResponseDTO;
+import wamddu.backend.ticket.dto.response.EventTicketResponse;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.TicketRepository;
 
@@ -75,8 +75,8 @@ public class EventService {
 
         List<Ticket> allTickets = ticketRepository.getAllEventTickets(id);
 
-        List<EventTicketResponseDTO> responseTickets = allTickets.stream()
-                .map(EventTicketResponseDTO::new)
+        List<EventTicketResponse> responseTickets = allTickets.stream()
+                .map(EventTicketResponse::from)
                 .toList();
 
         return EventDetailResponse.of(EventInfoResponse.from(event), responseTickets);

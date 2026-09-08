@@ -11,6 +11,7 @@ import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.security.JwtProvider;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
+import wamddu.backend.user.domain.UserStatus;
 import wamddu.backend.user.dto.request.*;
 import wamddu.backend.user.dto.response.*;
 import wamddu.backend.user.repository.UserRepository;
@@ -65,6 +66,7 @@ public class UserService {
         user.setEmail(request.getEmail());
         user.setPhonenumber(request.getPhonenumber());
         user.setRole(Role.USER);
+        user.setStatus(UserStatus.ACTIVE);
         user.setCustomerKey(generateCustomerKey());
         User savedUser = userRepository.save(user);
 
@@ -75,7 +77,7 @@ public class UserService {
     public LoginResult login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail());
 
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (user == null || user.getStatus() == UserStatus.DELETED || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
@@ -111,6 +113,10 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+        }
+
         String newToken = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
         String newRefreshToken = jwtProvider.generateRefreshToken(user.getId());
 
@@ -127,6 +133,10 @@ public class UserService {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+        }
+
         return MyInfoResponse.from(UserInfoResponse.from(user));
     }
 
@@ -134,6 +144,10 @@ public class UserService {
     public UpdateMyInfoResponse updateMyInfo(UpdateMyInfoRequest request, UserDetails userDetails) {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+        }
 
         if (request.getEmail() != null) {
             if (userRepository.existsByEmail(request.getEmail())) {
@@ -163,6 +177,10 @@ public class UserService {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+        }
+
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD", "현재 비밀번호가 올바르지 않습니다.");
         }
@@ -183,11 +201,20 @@ public class UserService {
         User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호가 올바르지 않습니다.");
         }
 
-        userRepository.delete(user);
+        user.setStatus(UserStatus.DELETED);
+        user.setEmail("deleted_" + System.currentTimeMillis() + "_" + user.getEmail());
+        if (user.getPhonenumber() != null) {
+            user.setPhonenumber("deleted_" + System.currentTimeMillis() + "_" + user.getPhonenumber());
+        }
+        userRepository.save(user);
         return MessageResponse.from("회원 탈퇴가 완료되었습니다.");
     }
 }

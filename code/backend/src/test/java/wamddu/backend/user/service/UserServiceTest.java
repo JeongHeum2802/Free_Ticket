@@ -14,6 +14,7 @@ import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.security.JwtProvider;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
+import wamddu.backend.user.domain.UserStatus;
 import wamddu.backend.user.dto.request.*;
 import wamddu.backend.user.dto.response.*;
 import wamddu.backend.user.repository.UserRepository;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -44,7 +46,16 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "홍길동", "encoded_password", "user@example.com", "01012345678", "customer_123", Role.USER);
+        user = User.builder()
+                .id(1L)
+                .username("홍길동")
+                .password("encoded_password")
+                .email("user@example.com")
+                .phonenumber("01012345678")
+                .customerKey("customer_123")
+                .role(Role.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
     }
 
     @Test
@@ -126,6 +137,25 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("로그인 실패 - 탈퇴한 회원")
+    void login_DeletedUser_ThrowsApiException() {
+        // given
+        user.setStatus(UserStatus.DELETED);
+        LoginRequest dto = new LoginRequest("user@example.com", "password123!");
+
+        given(userRepository.findByEmail("user@example.com")).willReturn(user);
+
+        // when & then
+        assertThatThrownBy(() -> userService.login(dto))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiException = (ApiException) ex;
+                    assertThat(apiException.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(apiException.getCode()).isEqualTo("INVALID_CREDENTIALS");
+                });
+    }
+
+    @Test
     @DisplayName("내 정보 조회 성공 테스트")
     void getMyInfo_Success() {
         // given
@@ -189,7 +219,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원 탈퇴 성공 테스트")
+    @DisplayName("회원 탈퇴 성공 테스트 (Soft Delete)")
     void deleteMyAccount_Success() {
         // given
         UserDetails userDetails = org.springframework.security.core.userdetails.User.withUsername("1")
@@ -207,5 +237,8 @@ class UserServiceTest {
 
         // then
         assertThat(response.getMessage()).isEqualTo("회원 탈퇴가 완료되었습니다.");
+        assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
+        assertThat(user.getEmail()).startsWith("deleted_");
+        verify(userRepository).save(user);
     }
 }

@@ -59,7 +59,15 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "홍길동", "password123!", "user@example.com", "01012345678", "customer_123", Role.USER);
+        user = User.builder()
+                .id(1L)
+                .username("홍길동")
+                .password("password123!")
+                .email("user@example.com")
+                .phonenumber("01012345678")
+                .customerKey("customer_123")
+                .role(Role.USER)
+                .build();
 
         event = new Event();
         event.setId(101L);
