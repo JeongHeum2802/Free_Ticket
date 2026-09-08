@@ -91,22 +91,36 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public ReservationListResponse getMyReservations(Long userId) {
-        List<ReservationHistoryResponse> list = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID)
-                .stream()
-                .map(this::toReservationResponse)
-                .toList();
+        List<Payment> payments = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID);
+        java.util.Set<Long> processedOrderIds = new java.util.HashSet<>();
+        java.util.List<ReservationHistoryResponse> list = new java.util.ArrayList<>();
+
+        for (Payment payment : payments) {
+            Order order = payment.getOrder();
+            if (order != null) {
+                processedOrderIds.add(order.getId());
+                Ticket ticket = order.getTicket_id() != null
+                        ? ticketRepository.findByIdWithEvent(order.getTicket_id()).orElse(null)
+                        : null;
+                list.add(ReservationHistoryResponse.of(payment, ticket));
+            }
+        }
+
+        List<Order> paidOrders = orderRepository.findAllByUserIdAndStatusOrderByPaidAtDesc(userId, OrderStatus.PAID);
+        for (Order order : paidOrders) {
+            if (!processedOrderIds.contains(order.getId())) {
+                Ticket ticket = order.getTicket_id() != null
+                        ? ticketRepository.findByIdWithEvent(order.getTicket_id()).orElse(null)
+                        : null;
+                list.add(ReservationHistoryResponse.fromOrderOnly(order, ticket));
+            }
+        }
+
         return new ReservationListResponse(list);
     }
 
     private CheckoutOrderResponse toCheckoutResponse(Order order, Ticket ticket) {
         return CheckoutOrderResponse.of(order, ticket);
-    }
-
-    private ReservationHistoryResponse toReservationResponse(Payment payment) {
-        Order order = payment.getOrder();
-        Ticket ticket = ticketRepository.findById(order.getTicket_id())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
-        return ReservationHistoryResponse.of(payment, ticket);
     }
 
     private static String generateOrderId() {

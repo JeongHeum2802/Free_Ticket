@@ -206,7 +206,8 @@ class OrderServiceTest {
         payment.setReceiptUrl("http://example.com/receipt");
 
         given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment));
-        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+        given(ticketRepository.findByIdWithEvent(1L)).willReturn(Optional.of(ticket));
+        given(orderRepository.findAllByUserIdAndStatusOrderByPaidAtDesc(1L, OrderStatus.PAID)).willReturn(List.of(order));
 
         // when
         ReservationListResponse response = orderService.getMyReservations(1L);

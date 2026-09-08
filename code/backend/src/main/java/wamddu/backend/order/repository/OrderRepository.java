@@ -11,6 +11,7 @@ import wamddu.backend.order.domain.OrderStatus;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -31,4 +32,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("statuses") Collection<OrderStatus> statuses,
             @Param("now") LocalDateTime now
     );
+
+    List<Order> findAllByUserIdAndStatusOrderByPaidAtDesc(Long userId, OrderStatus status);
 }
