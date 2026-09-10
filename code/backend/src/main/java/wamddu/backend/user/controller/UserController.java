@@ -1,5 +1,6 @@
 package wamddu.backend.user.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/api/auth/signup")
-    public ResponseEntity<SignupResponse> signUp(@RequestBody SignupRequest request) {
+    public ResponseEntity<SignupResponse> signUp(@Valid @RequestBody SignupRequest request) {
         SignupResponse response = userService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

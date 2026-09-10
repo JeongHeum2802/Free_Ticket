@@ -51,15 +51,6 @@ public class UserService {
             throw new ApiException(HttpStatus.CONFLICT, "PHONENUMBER_ALREADY_EXISTS", "이미 등록된 전화번호입니다.");
         }
 
-        // 입력값 검사
-        String regex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$";
-        if (request.getUsername() == null || request.getUsername().length() < 2
-                || request.getPassword() == null || request.getPassword().length() < 8
-                || request.getEmail() == null || !request.getEmail().matches(regex)
-                || request.getPhonenumber() == null || request.getPhonenumber().length() != 11) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "입력값을 확인해 주세요.");
-        }
-
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
