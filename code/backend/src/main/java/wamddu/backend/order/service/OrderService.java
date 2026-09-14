@@ -1,6 +1,7 @@
 package wamddu.backend.order.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +20,13 @@ import wamddu.backend.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -34,89 +40,99 @@ public class OrderService {
 
     @Transactional
     public CheckoutOrderResponse createOrder(CreateOrderRequest request, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
-        Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "존재하지 않는 티켓입니다."));
+        log.debug("[SQL CHECK] POST /api/orders START");
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
+            Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "존재하지 않는 티켓입니다."));
 
-        LocalDateTime now = LocalDateTime.now();
-        if (ticket.getBookingEndtime() == null || !now.isBefore(ticket.getBookingEndtime())) {
-            throw new ApiException(HttpStatus.CONFLICT, "BOOKING_CLOSED", "예매가 마감된 티켓입니다.");
+            LocalDateTime now = LocalDateTime.now();
+            if (ticket.getBookingEndtime() == null || !now.isBefore(ticket.getBookingEndtime())) {
+                throw new ApiException(HttpStatus.CONFLICT, "BOOKING_CLOSED", "예매가 마감된 티켓입니다.");
+            }
+            if (ticket.getPrice() == null || ticket.getPrice() < 0
+                    || ticket.getTotal_ticket() == null || ticket.getSold_ticket() == null) {
+                throw new ApiException(HttpStatus.CONFLICT, "INVALID_TICKET_DATA", "티켓 판매 정보가 올바르지 않습니다.");
+            }
+
+            long pendingQuantity = orderRepository.sumActiveQuantity(
+                    ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING), now);
+            long remaining = (long) ticket.getTotal_ticket() - ticket.getSold_ticket() - pendingQuantity;
+            if (remaining < request.getQuantity()) {
+                throw new ApiException(HttpStatus.CONFLICT, "TICKET_SOLD_OUT", "선택한 수량만큼 남은 티켓이 없습니다.");
+            }
+
+            if (user.getCustomerKey() == null || user.getCustomerKey().isBlank()) {
+                user.setCustomerKey("customer_" + compactUuid());
+            }
+
+            Order order = Order.createPendingOrder(
+                    generateOrderId(),
+                    user,
+                    ticket.getId(),
+                    ticket.getEvent().getId(),
+                    request.getQuantity(),
+                    ticket.getPrice(),
+                    UUID.randomUUID().toString(),
+                    PAYMENT_WINDOW_MINUTES
+            );
+            orderRepository.save(order);
+
+            return toCheckoutResponse(order, ticket);
+        } finally {
+            log.debug("[SQL CHECK] POST /api/orders END");
         }
-        if (ticket.getPrice() == null || ticket.getPrice() < 0
-                || ticket.getTotal_ticket() == null || ticket.getSold_ticket() == null) {
-            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TICKET_DATA", "티켓 판매 정보가 올바르지 않습니다.");
-        }
-
-        long pendingQuantity = orderRepository.sumActiveQuantity(
-                ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING), now);
-        long remaining = (long) ticket.getTotal_ticket() - ticket.getSold_ticket() - pendingQuantity;
-        if (remaining < request.getQuantity()) {
-            throw new ApiException(HttpStatus.CONFLICT, "TICKET_SOLD_OUT", "선택한 수량만큼 남은 티켓이 없습니다.");
-        }
-
-        if (user.getCustomerKey() == null || user.getCustomerKey().isBlank()) {
-            user.setCustomerKey("customer_" + compactUuid());
-        }
-
-        Order order = Order.createPendingOrder(
-                generateOrderId(),
-                user,
-                ticket.getId(),
-                ticket.getEvent().getId(),
-                request.getQuantity(),
-                ticket.getPrice(),
-                UUID.randomUUID().toString(),
-                PAYMENT_WINDOW_MINUTES
-        );
-        orderRepository.save(order);
-
-        return toCheckoutResponse(order, ticket);
     }
 
     @Transactional(readOnly = true)
     public CheckoutOrderResponse getCheckoutOrder(String orderId, Long userId) {
-        Order order = orderRepository.findByOrderIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."));
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new ApiException(HttpStatus.CONFLICT, "INVALID_ORDER_STATUS", "결제를 진행할 수 없는 주문입니다.");
+        log.debug("[SQL CHECK] GET /api/orders/{orderId}/checkout START");
+        try {
+            Order order = orderRepository.findByOrderIdAndUserId(orderId, userId)
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."));
+            if (order.getStatus() != OrderStatus.PENDING) {
+                throw new ApiException(HttpStatus.CONFLICT, "INVALID_ORDER_STATUS", "결제를 진행할 수 없는 주문입니다.");
+            }
+            if (LocalDateTime.now().isAfter(order.getExpiresAt())) {
+                throw new ApiException(HttpStatus.CONFLICT, "ORDER_EXPIRED", "결제 가능 시간이 만료되었습니다.");
+            }
+            Ticket ticket = ticketRepository.findById(order.getTicket_id())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
+            return toCheckoutResponse(order, ticket);
+        } finally {
+            log.debug("[SQL CHECK] GET /api/orders/{orderId}/checkout END");
         }
-        if (LocalDateTime.now().isAfter(order.getExpiresAt())) {
-            throw new ApiException(HttpStatus.CONFLICT, "ORDER_EXPIRED", "결제 가능 시간이 만료되었습니다.");
-        }
-        Ticket ticket = ticketRepository.findById(order.getTicket_id())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "티켓을 찾을 수 없습니다."));
-        return toCheckoutResponse(order, ticket);
     }
 
     @Transactional(readOnly = true)
     public ReservationListResponse getMyReservations(Long userId) {
-        List<Payment> payments = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID);
-        java.util.Set<Long> processedOrderIds = new java.util.HashSet<>();
-        java.util.List<ReservationHistoryResponse> list = new java.util.ArrayList<>();
+        log.debug("[SQL CHECK] GET /api/orders/me/reservations START");
+        try {
+            List<Payment> payments = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID);
+            List<Long> ticketIds = payments.stream()
+                    .map(payment -> payment.getOrder().getTicket_id())
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
 
-        for (Payment payment : payments) {
-            Order order = payment.getOrder();
-            if (order != null) {
-                processedOrderIds.add(order.getId());
-                Ticket ticket = order.getTicket_id() != null
-                        ? ticketRepository.findByIdWithEvent(order.getTicket_id()).orElse(null)
-                        : null;
-                list.add(ReservationHistoryResponse.of(payment, ticket));
-            }
+            Map<Long, Ticket> ticketsById = ticketIds.isEmpty()
+                    ? Map.of()
+                    : ticketRepository.findAllWithEventByIdIn(ticketIds).stream()
+                            .collect(Collectors.toMap(Ticket::getId, Function.identity()));
+
+            List<ReservationHistoryResponse> list = payments.stream()
+                    .map(payment -> {
+                        Long ticketId = payment.getOrder().getTicket_id();
+                        return ReservationHistoryResponse.of(payment,
+                                ticketId == null ? null : ticketsById.get(ticketId));
+                    })
+                    .toList();
+
+            return new ReservationListResponse(list);
+        } finally {
+            log.debug("[SQL CHECK] GET /api/orders/me/reservations END");
         }
-
-        List<Order> paidOrders = orderRepository.findAllByUserIdAndStatusOrderByPaidAtDesc(userId, OrderStatus.PAID);
-        for (Order order : paidOrders) {
-            if (!processedOrderIds.contains(order.getId())) {
-                Ticket ticket = order.getTicket_id() != null
-                        ? ticketRepository.findByIdWithEvent(order.getTicket_id()).orElse(null)
-                        : null;
-                list.add(ReservationHistoryResponse.fromOrderOnly(order, ticket));
-            }
-        }
-
-        return new ReservationListResponse(list);
     }
 
     private CheckoutOrderResponse toCheckoutResponse(Order order, Ticket ticket) {

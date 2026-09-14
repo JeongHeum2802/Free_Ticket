@@ -23,6 +23,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("SELECT T FROM Ticket T JOIN FETCH T.event WHERE T.id = :id")
     Optional<Ticket> findByIdForUpdate(Long id);
 
-    @Query("SELECT T FROM Ticket T LEFT JOIN FETCH T.event WHERE T.id = :id")
-    Optional<Ticket> findByIdWithEvent(@Param("id") Long id);
+    @Query("SELECT T FROM Ticket T LEFT JOIN FETCH T.event WHERE T.id IN :ids")
+    List<Ticket> findAllWithEventByIdIn(@Param("ids") List<Long> ids);
 }

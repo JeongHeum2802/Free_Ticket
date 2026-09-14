@@ -34,6 +34,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -213,17 +215,39 @@ class OrderServiceTest {
         payment.setMethod("카드");
         payment.setReceiptUrl("http://example.com/receipt");
 
-        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment));
-        given(ticketRepository.findByIdWithEvent(1L)).willReturn(Optional.of(ticket));
-        given(orderRepository.findAllByUserIdAndStatusOrderByPaidAtDesc(1L, OrderStatus.PAID)).willReturn(List.of(order));
+        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment, payment, payment));
+        given(ticketRepository.findAllWithEventByIdIn(List.of(1L))).willReturn(List.of(ticket));
 
         // when
         ReservationListResponse response = orderService.getMyReservations(1L);
 
         // then
         assertThat(response).isNotNull();
-        assertThat(response.reservations()).hasSize(1);
+        assertThat(response.reservations()).hasSize(3);
         assertThat(response.reservations().get(0).orderId()).isEqualTo("ORD-20260907-PAID");
         assertThat(response.reservations().get(0).amount()).isEqualTo(150000L);
+        assertThat(mockingDetails(ticketRepository).getInvocations()).hasSize(1);
+        verifyNoInteractions(orderRepository);
+    }
+
+    @Test
+    void getMyReservations_EmptySkipsTicketQuery() {
+        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of());
+        assertThat(orderService.getMyReservations(1L).reservations()).isEmpty();
+        verifyNoInteractions(ticketRepository, orderRepository);
+    }
+
+    @Test
+    void getMyReservations_NullTicketIdKeepsFallback() {
+        Order order = new Order();
+        order.setStatus(OrderStatus.PAID);
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment));
+
+        assertThat(orderService.getMyReservations(1L).reservations())
+                .singleElement().extracting(reservation -> reservation.eventName())
+                .isEqualTo("공연 정보 없음");
+        verifyNoInteractions(ticketRepository, orderRepository);
     }
 }
