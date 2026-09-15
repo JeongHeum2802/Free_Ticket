@@ -1,9 +1,7 @@
 package wamddu.backend.payment.domain;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import wamddu.backend.order.domain.Order;
 
 import java.time.LocalDateTime;
@@ -12,7 +10,9 @@ import java.time.LocalDateTime;
 @Table(name = "payments")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,4 +37,24 @@ public class Payment {
 
     @Column(length = 500)
     private String receiptUrl;
+
+    public static Payment createPayment(
+            Order order,
+            String paymentKey,
+            Long amount,
+            String method,
+            String status,
+            LocalDateTime approvedAt,
+            String receiptUrl
+    ) {
+        return Payment.builder()
+                .order(order)
+                .paymentKey(paymentKey)
+                .amount(amount)
+                .method(method)
+                .status(status)
+                .approvedAt(approvedAt)
+                .receiptUrl(receiptUrl)
+                .build();
+    }
 }
