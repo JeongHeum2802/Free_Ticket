@@ -2,7 +2,6 @@ package wamddu.backend.order.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import wamddu.backend.seat.domain.Seat;
 import wamddu.backend.user.domain.User;
 
 import java.time.LocalDateTime;
@@ -28,11 +27,6 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Builder.Default
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seat_id", nullable = true)
-    private Seat seat = null;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
