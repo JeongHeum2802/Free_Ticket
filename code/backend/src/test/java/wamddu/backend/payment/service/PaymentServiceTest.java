@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
@@ -44,6 +45,9 @@ class PaymentServiceTest {
 
     @Mock
     private TossPaymentsClient tossPaymentsClient;
+
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     @InjectMocks
     private PaymentService paymentService;

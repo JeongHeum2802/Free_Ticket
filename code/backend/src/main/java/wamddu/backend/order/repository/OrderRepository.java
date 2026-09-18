@@ -26,7 +26,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O " +
-            "WHERE O.ticket_id = :ticketId AND O.status IN :statuses AND O.expiresAt > :now")
+            "WHERE O.ticket_id = :ticketId AND O.status IN :statuses " +
+            "AND (O.expiresAt > :now OR O.status = wamddu.backend.order.domain.OrderStatus.CONFIRMING)")
     Long sumActiveQuantity(
             @Param("ticketId") Long ticketId,
             @Param("statuses") Collection<OrderStatus> statuses,
