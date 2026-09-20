@@ -4,10 +4,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
@@ -24,11 +27,16 @@ import wamddu.backend.user.domain.User;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -171,5 +179,81 @@ class PaymentServiceTest {
                 .isInstanceOf(ApiException.class)
                 .extracting("code")
                 .isEqualTo("ORDER_EXPIRED");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "wrong_key, 300000, 300000",
+            "payment_key_123, 100000, 300000",
+            "payment_key_123, 300000, 100000"
+    })
+    @DisplayName("커밋 예외 후 PAID여도 결제 키 또는 결제·주문 금액이 다르면 성공으로 반환하지 않는다")
+    void recovery_RejectsMismatchedPaidPayment(String paymentKey, long paymentAmount, long orderAmount) {
+        Payment payment = Payment.createPayment(order, paymentKey, paymentAmount,
+                "카드", "DONE", LocalDateTime.now(), null);
+        simulateCommitFailure(OrderStatus.PAID, orderAmount, Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.confirm(1L,
+                new ConfirmPaymentRequest("payment_key_123", order.getOrderId(), 300000L)))
+                .isInstanceOf(ApiException.class).extracting("code").isEqualTo("PAYMENT_RECOVERY_PENDING");
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+        verify(tossPaymentsClient, never()).cancel(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("커밋 예외 후 PAID의 결제 키와 금액이 일치하면 기존 결제를 반환한다")
+    void recovery_ReturnsMatchingPaidPayment() {
+        Payment payment = Payment.createPayment(order, "payment_key_123", 300000L,
+                "카드", "DONE", LocalDateTime.now(), null);
+        simulateCommitFailure(OrderStatus.PAID, 300000L, Optional.of(payment));
+
+        PaymentResponse result = paymentService.confirm(1L,
+                new ConfirmPaymentRequest("payment_key_123", order.getOrderId(), 300000L));
+
+        assertThat(result).isEqualTo(PaymentResponse.from(payment));
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+        assertThat(ticket.getSold_ticket()).isEqualTo(12);
+        verify(tossPaymentsClient, never()).cancel(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("커밋 예외 후 CONFIRMING인데 Payment가 있으면 완료 처리를 재시도하지 않는다")
+    void recovery_DoesNotRetryWhenConfirmingHasPayment() {
+        Payment payment = Payment.createPayment(order, "payment_key_123", 300000L,
+                "카드", "DONE", LocalDateTime.now(), null);
+        simulateCommitFailure(OrderStatus.CONFIRMING, 300000L, Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.confirm(1L,
+                new ConfirmPaymentRequest("payment_key_123", order.getOrderId(), 300000L)))
+                .isInstanceOf(ApiException.class).extracting("code").isEqualTo("PAYMENT_RECOVERY_PENDING");
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+        verify(ticketRepository, times(1)).findByIdForUpdate(100L);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMING);
+        assertThat(ticket.getSold_ticket()).isEqualTo(10);
+        verify(tossPaymentsClient, never()).cancel(anyString(), anyString(), anyString());
+    }
+
+    private void simulateCommitFailure(OrderStatus recoveredStatus, long recoveredAmount,
+                                       Optional<Payment> storedPayment) {
+        given(orderRepository.findByOrderIdAndUserIdForUpdate(order.getOrderId(), 1L))
+                .willReturn(Optional.of(order));
+        given(tossPaymentsClient.confirm("payment_key_123", order.getOrderId(), 300000L, order.getIdempotencyKey()))
+                .willReturn(new TossPaymentsClient.TossPaymentResponse(
+                        "payment_key_123", order.getOrderId(), "DONE", "카드", 300000L, null));
+        given(ticketRepository.findByIdForUpdate(100L)).willReturn(Optional.of(ticket));
+        given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(paymentRepository.findByOrderOrderId(order.getOrderId())).willReturn(storedPayment);
+        given(transactionManager.getTransaction(any())).willAnswer(invocation -> new SimpleTransactionStatus());
+        var commits = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (commits.incrementAndGet() == 2) {
+                // 단위 테스트에서는 커밋 예외 이후 DB에서 조회할 상태를 명시적으로 대체한다.
+                order.setStatus(recoveredStatus);
+                order.setTotalAmount(recoveredAmount);
+                ticket.setSold_ticket(recoveredStatus == OrderStatus.PAID ? 12 : 10);
+                throw new IllegalStateException("Injected commit failure");
+            }
+            return null;
+        }).when(transactionManager).commit(any());
     }
 }

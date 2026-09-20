@@ -65,6 +65,32 @@ class TossPaymentsClientTest {
     }
 
     @Test
+    void lookupUsesAuthenticatedGetAndReturnsPaymentIdentity() {
+        respond(200, "{\"paymentKey\":\"pay_1\",\"orderId\":\"order_1\",\"status\":\"DONE\",\"totalAmount\":1000}");
+        var response = client.getPayment("pay_1");
+        assertThat(request.get()).isEqualTo("GET /v1/payments/pay_1");
+        assertThat(authorization.get()).isEqualTo("Basic " + Base64.getEncoder()
+                .encodeToString("test_secret:".getBytes(StandardCharsets.UTF_8)));
+        assertThat(response.orderId()).isEqualTo("order_1");
+        assertThat(response.totalAmount()).isEqualTo(1000L);
+        assertThat(response.status()).isEqualTo("DONE");
+    }
+
+    @Test
+    void lookupFailureIsNotInterpretedAsAnUnpaidPayment() {
+        respond(404, "{\"code\":\"NOT_FOUND_PAYMENT\",\"message\":\"Not found\"}");
+        assertThatThrownBy(() -> client.getPayment("pay_1"))
+                .isInstanceOf(ApiException.class).extracting("code").isEqualTo("TOSS_LOOKUP_FAILED");
+    }
+
+    @Test
+    void lookupRejectsDifferentPaymentKey() {
+        respond(200, "{\"paymentKey\":\"wrong\",\"status\":\"DONE\"}");
+        assertThatThrownBy(() -> client.getPayment("pay_1"))
+                .isInstanceOf(ApiException.class).extracting("code").isEqualTo("INVALID_TOSS_LOOKUP_RESPONSE");
+    }
+
+    @Test
     void cancelMapsProviderError() {
         respond(400, "{\"code\":\"FAILED_CANCEL_PAYMENT\",\"message\":\"Cancel failed\"}");
         assertThatThrownBy(() -> client.cancel("pay_1", "reason", "cancel_1"))

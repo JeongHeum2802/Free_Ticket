@@ -3,6 +3,7 @@ package wamddu.backend.payment.client;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 import wamddu.backend.global.exception.ApiException;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 
@@ -27,7 +29,10 @@ public class TossPaymentsClient {
             @Value("${toss.api-base-url}") String apiBaseUrl,
             @Value("${toss.secret-key}") String secretKey
     ) {
-        this.restClient = RestClient.builder().baseUrl(apiBaseUrl).build();
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(30));
+        this.restClient = RestClient.builder().baseUrl(apiBaseUrl).requestFactory(factory).build();
         this.secretKey = secretKey;
     }
 
@@ -64,6 +69,30 @@ public class TossPaymentsClient {
                     "토스페이먼츠 결제 승인에 실패했습니다. [%s] %s"
                             .formatted(tossError.code(), tossError.message())
             );
+        }
+    }
+
+    public TossPaymentResponse getPayment(String paymentKey) {
+        if (paymentKey == null || paymentKey.isBlank() || paymentKey.length() > 200) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT_KEY", "결제 키를 확인해 주세요.");
+        }
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "TOSS_SECRET_KEY_NOT_CONFIGURED", "결제 서버 설정이 완료되지 않았습니다.");
+        }
+        String credentials = Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+        try {
+            var response = restClient.get().uri("/v1/payments/{paymentKey}", paymentKey)
+                    .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                    .retrieve().body(TossPaymentResponse.class);
+            if (response == null || !paymentKey.equals(response.paymentKey())) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY,
+                        "INVALID_TOSS_LOOKUP_RESPONSE", "결제 조회 결과를 확인할 수 없습니다.");
+            }
+            return response;
+        } catch (RestClientResponseException exception) {
+            // 404도 미승인 확정으로 해석하지 않는다. 원래 승인 요청이 진행 중일 수 있다.
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "TOSS_LOOKUP_FAILED", "토스 결제 상태 조회에 실패했습니다.");
         }
     }
 

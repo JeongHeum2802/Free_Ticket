@@ -52,6 +52,17 @@ public class Order {
     @Column(nullable = false, unique = true, length = 36)
     private String idempotencyKey;
 
+    @Column(length = 200)
+    private String paymentKey;
+
+    private LocalDateTime nextRecoveryAt;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int recoveryAttempts;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean recoveryReviewRequired;
+
     public static Order createPendingOrder(
             String orderId,
             User user,
