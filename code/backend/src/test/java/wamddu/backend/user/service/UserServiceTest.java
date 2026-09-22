@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.security.JwtProvider;
+import wamddu.backend.eventDirector.repository.EventDirectorRepository;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
 import wamddu.backend.user.domain.UserStatus;
@@ -32,6 +33,9 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private EventDirectorRepository eventDirectorRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -106,6 +110,7 @@ class UserServiceTest {
         given(passwordEncoder.matches("password123!", "encoded_password")).willReturn(true);
         given(jwtProvider.generateJwtToken(1L, "USER")).willReturn("access_token");
         given(jwtProvider.generateRefreshToken(1L)).willReturn("refresh_token");
+        given(eventDirectorRepository.existsByUserId(1L)).willReturn(true);
 
         // when
         LoginResult result = userService.login(dto);
@@ -115,6 +120,7 @@ class UserServiceTest {
         assertThat(result.response().getAccessToken()).isEqualTo("access_token");
         assertThat(result.refreshToken()).isEqualTo("refresh_token");
         assertThat(result.response().getUser().getEmail()).isEqualTo("user@example.com");
+        assertThat(result.response().getUser().isEventDirector()).isTrue();
     }
 
     @Test
@@ -158,6 +164,7 @@ class UserServiceTest {
     @Test
     @DisplayName("내 정보 조회 성공 테스트")
     void getMyInfo_Success() {
+        user.setRole(Role.DIRECTOR);
         // given
         UserDetails userDetails = org.springframework.security.core.userdetails.User.withUsername("1")
                 .password("password")
@@ -172,6 +179,7 @@ class UserServiceTest {
         // then
         assertThat(response.getUser().getId()).isEqualTo(1L);
         assertThat(response.getUser().getUsername()).isEqualTo("홍길동");
+        assertThat(response.getUser().isEventDirector()).isFalse();
     }
 
     @Test
@@ -187,12 +195,25 @@ class UserServiceTest {
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willReturn(user);
+        given(eventDirectorRepository.existsByUserId(1L)).willReturn(true);
 
         // when
         UpdateMyInfoResponse response = userService.updateMyInfo(request, userDetails);
 
         // then
         assertThat(response.getMessage()).isEqualTo("회원 정보가 수정되었습니다.");
+        assertThat(response.getUser().isEventDirector()).isTrue();
+    }
+
+    @Test
+    @DisplayName("내 정보 조회 시 일반 권한이어도 행사 담당자로 등록되어 있으면 표시한다")
+    void getMyInfo_RegisteredEventDirector() {
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.withUsername("1")
+                .password("password").authorities("ROLE_USER").build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(eventDirectorRepository.existsByUserId(1L)).willReturn(true);
+
+        assertThat(userService.getMyInfo(userDetails).getUser().isEventDirector()).isTrue();
     }
 
     @Test

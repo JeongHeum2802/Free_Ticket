@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .sessionManagement(
                         (session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests((auth) -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                "/api/events/{eventId}/tickets/{ticketId}/price-history").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/refresh", "/api/auth/logout",
                                 "/api/events/*", "/api/events").permitAll()
                         .anyRequest().authenticated()
