@@ -2,6 +2,7 @@ package wamddu.backend.order.repository;
 
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,7 +27,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O " +
-            "WHERE O.ticket_id = :ticketId AND O.status IN :statuses AND O.expiresAt > :now")
+            "WHERE O.ticket_id = :ticketId AND O.status IN :statuses " +
+            "AND (O.expiresAt > :now OR O.status IN " +
+            "(wamddu.backend.order.domain.OrderStatus.CONFIRMING, wamddu.backend.order.domain.OrderStatus.CANCELING))")
     Long sumActiveQuantity(
             @Param("ticketId") Long ticketId,
             @Param("statuses") Collection<OrderStatus> statuses,
@@ -34,4 +37,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     List<Order> findAllByUserIdAndStatusOrderByPaidAtDesc(Long userId, OrderStatus status);
+
+    @Query("SELECT O.id FROM Order O WHERE O.status IN " +
+            "(wamddu.backend.order.domain.OrderStatus.CONFIRMING, wamddu.backend.order.domain.OrderStatus.CANCELING) " +
+            "AND O.recoveryReviewRequired = false AND (O.nextRecoveryAt IS NULL OR O.nextRecoveryAt <= :now) " +
+            "ORDER BY O.nextRecoveryAt, O.id")
+    List<Long> findRecoveryCandidates(@Param("now") LocalDateTime now, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT O FROM Order O JOIN FETCH O.user WHERE O.id = :id")
+    Optional<Order> findByIdForUpdate(@Param("id") Long id);
 }

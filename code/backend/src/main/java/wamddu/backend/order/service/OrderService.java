@@ -57,7 +57,7 @@ public class OrderService {
             }
 
             long pendingQuantity = orderRepository.sumActiveQuantity(
-                    ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING), now);
+                    ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING, OrderStatus.CANCELING), now);
             long remaining = (long) ticket.getTotal_ticket() - ticket.getSold_ticket() - pendingQuantity;
             if (remaining < request.getQuantity()) {
                 throw new ApiException(HttpStatus.CONFLICT, "TICKET_SOLD_OUT", "선택한 수량만큼 남은 티켓이 없습니다.");
