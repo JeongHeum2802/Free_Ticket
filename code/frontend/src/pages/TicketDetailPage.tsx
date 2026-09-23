@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import NaverMap from "../components/NaverMap";
+import BuyerTicketPriceHistory from "../components/BuyerTicketPriceHistory";
 
 import { getEventDetail } from "../api/events";
 import { createOrder } from "../api/orders";
@@ -154,9 +155,15 @@ export default function TicketDetailPage() {
                 alt={`${event.name} 포스터`}
                 className="w-full rounded-xl object-cover"
               />
+              <section className="mt-8">
+                <h2 className="mb-4 text-lg font-black text-gray-900">
+                  공연장 위치
+                </h2>
+                <NaverMap address={event.location} />
+              </section>
             </div>
 
-            <section>
+            <section className="min-w-0">
               <span className="text-sm font-bold text-[#453eda]">
                 {eventCategoryLabels[event.category]}
               </span>
@@ -178,14 +185,6 @@ export default function TicketDetailPage() {
                   <dd className="leading-6 text-gray-600">{event.description}</dd>
                 </dl>
               </div>
-              <div className="mt-8">
-                <h2 className="mb-4 text-lg font-black text-gray-900">
-                  공연장 위치
-               </h2>
-
-                <NaverMap address={event.location} />
-              </div>
-
               <div className="mt-8">
                 <h2 className="text-lg font-black text-gray-900">티켓 선택</h2>
                 {ticketOptions.length === 0 ? (
@@ -235,6 +234,10 @@ export default function TicketDetailPage() {
                   </div>
                 )}
               </div>
+
+              {selectedTicket && (
+                <BuyerTicketPriceHistory eventId={eventId} ticketId={selectedTicket.ticketId} ticketType={selectedTicket.type} />
+              )}
 
               {selectedTicket && (
                 <div className="mt-8 flex flex-col gap-5 border-t border-gray-200 pt-6 sm:flex-row sm:items-end sm:justify-between">

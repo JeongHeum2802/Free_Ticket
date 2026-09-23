@@ -15,6 +15,17 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
+    Optional<Ticket> findByIdAndEventId(Long id, Long eventId);
+
+    @Query("SELECT T FROM Ticket T JOIN FETCH T.event E WHERE EXISTS " +
+            "(SELECT D.id FROM EventDirector D WHERE D.event = E AND D.user.id = :userId) " +
+            "ORDER BY T.start_time DESC, T.id ASC")
+    List<Ticket> findAllManagedBy(@Param("userId") Long userId);
+
+    @Query("SELECT T FROM Ticket T JOIN FETCH T.event E WHERE T.id = :ticketId AND EXISTS " +
+            "(SELECT D.id FROM EventDirector D WHERE D.event = E AND D.user.id = :userId)")
+    Optional<Ticket> findManagedTicket(@Param("ticketId") Long ticketId, @Param("userId") Long userId);
+
     @Query("SELECT T FROM Ticket T WHERE T.event.id = :id " +
             "ORDER BY T.start_time ASC, T.price DESC")
     List<Ticket> getAllEventTickets(Long id);
