@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.security.JwtProvider;
+import wamddu.backend.eventDirector.repository.EventDirectorRepository;
 import wamddu.backend.user.domain.Role;
 import wamddu.backend.user.domain.User;
 import wamddu.backend.user.domain.UserStatus;
@@ -28,6 +29,7 @@ public class UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final EventDirectorRepository eventDirectorRepository;
     private final JwtProvider jwtProvider;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
@@ -65,7 +67,7 @@ public class UserService {
             user.setCustomerKey(generateCustomerKey());
             User savedUser = userRepository.save(user);
 
-            return SignupResponse.of("회원가입이 완료되었습니다.", UserInfoResponse.from(savedUser));
+            return SignupResponse.of("회원가입이 완료되었습니다.", UserInfoResponse.from(savedUser, false));
         } finally {
             log.debug("[SQL CHECK] POST /api/auth/signup END");
         }
@@ -89,7 +91,7 @@ public class UserService {
                     .accessToken(accessToken)
                     .tokenType("Bearer")
                     .expiresIn(1800)
-                    .user(UserInfoResponse.from(user))
+                    .user(toUserInfo(user))
                     .build();
 
             return new LoginResult(response, refreshToken);
@@ -147,7 +149,7 @@ public class UserService {
                 throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
             }
 
-            return MyInfoResponse.from(UserInfoResponse.from(user));
+            return MyInfoResponse.from(toUserInfo(user));
         } finally {
             log.debug("[SQL CHECK] GET /api/auth/me END");
         }
@@ -184,10 +186,14 @@ public class UserService {
 
             User updatedUser = userRepository.save(user);
 
-            return UpdateMyInfoResponse.of("회원 정보가 수정되었습니다.", UserInfoResponse.from(updatedUser));
+            return UpdateMyInfoResponse.of("회원 정보가 수정되었습니다.", toUserInfo(updatedUser));
         } finally {
             log.debug("[SQL CHECK] POST /api/users/me END");
         }
+    }
+
+    private UserInfoResponse toUserInfo(User user) {
+        return UserInfoResponse.from(user, eventDirectorRepository.existsByUserId(user.getId()));
     }
 
     @Transactional

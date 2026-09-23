@@ -1,4 +1,4 @@
-export type UserRole = "USER" | "ADMIN" | "SELLER";
+export type UserRole = "USER" | "ADMIN" | "DIRECTOR";
 
 export type User = {
   id: number;
@@ -6,6 +6,7 @@ export type User = {
   email: string;
   phonenumber: string;
   role: UserRole;
+  eventDirector: boolean;
 };
 
 export type LoginRequest = {

@@ -34,8 +34,6 @@ CREATE TABLE `event_directors` (
                                    `user_id` bigint NOT NULL,
                                    PRIMARY KEY (`id`),
                                    UNIQUE KEY `uk_event_director` (`event_id`, `user_id`),
-                                   KEY `FKo5sgrtonppbovvdosdf3if774` (`event_id`),
-                                   KEY `FKphv132ir3mgfmlst3xt6skafk` (`user_id`),
                                    CONSTRAINT `FKo5sgrtonppbovvdosdf3if774`
                                        FOREIGN KEY (`event_id`) REFERENCES `events` (`id`),
                                    CONSTRAINT `FKphv132ir3mgfmlst3xt6skafk`
@@ -54,7 +52,6 @@ CREATE TABLE `tickets` (
                            `description` varchar(255) DEFAULT NULL,
                            `type` varchar(255) NOT NULL,
                            PRIMARY KEY (`id`),
-                           KEY `FK3utafe14rupaypjocldjaj4ol` (`event_id`),
                            CONSTRAINT `FK3utafe14rupaypjocldjaj4ol`
                                FOREIGN KEY (`event_id`) REFERENCES `events` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=164
@@ -66,7 +63,6 @@ CREATE TABLE `ticket_price_history` (
                                         `price` int NOT NULL,
                                         `changed_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                                         PRIMARY KEY (`id`),
-                                        KEY `idx_ticket_price_history_ticket_changed_at` (`ticket_id`, `changed_at`),
                                         CONSTRAINT `fk_ticket_price_history_ticket`
                                             FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`)
 ) ENGINE=InnoDB
@@ -85,11 +81,14 @@ CREATE TABLE `orders` (
                           `total_amount` bigint NOT NULL,
                           `paid_at` datetime(6) DEFAULT NULL,
                           `idempotency_key` varchar(36) NOT NULL,
-                          `status` enum('CANCELED','CONFIRMING','EXPIRED','PAID','PAYMENT_FAILED','PENDING') DEFAULT NULL,
+                          `payment_key` varchar(200) DEFAULT NULL,
+                          `next_recovery_at` datetime(6) DEFAULT NULL,
+                          `recovery_attempts` int NOT NULL DEFAULT 0,
+                          `recovery_review_required` boolean NOT NULL DEFAULT FALSE,
+                          `status` enum('CANCELED','CANCELING','CONFIRMING','EXPIRED','PAID','PAYMENT_FAILED','PENDING') DEFAULT NULL,
                           PRIMARY KEY (`id`),
                           UNIQUE KEY `UKhmsk25beh6atojvle1xuymjj0` (`order_id`),
                           UNIQUE KEY `uk_orders_idempotency_key` (`idempotency_key`),
-                          KEY `FK32ql8ubntj5uh44ph9659tiih` (`user_id`),
                           CONSTRAINT `FK32ql8ubntj5uh44ph9659tiih`
                               FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6

@@ -21,9 +21,9 @@ export default function Mypage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <div className="mx-auto flex max-w-6xl gap-8 px-4">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 md:flex-row">
         {/* 왼쪽 사이드바 */}
-        <aside className="w-64 shrink-0">
+        <aside className="w-full shrink-0 md:w-64">
           <div className="rounded-xl bg-white p-5 shadow-sm">
             <div className="border-b border-gray-200 pb-5">
               <p className="text-sm text-gray-500">마이페이지</p>
@@ -52,9 +52,11 @@ export default function Mypage() {
                 내가 예매한 티켓
               </NavLink>
 
-              <NavLink to="selling" className={menuClass}>
-                내가 판매 중인 티켓
-              </NavLink>
+              {user?.eventDirector === true && (
+                <NavLink to="selling" className={menuClass}>
+                  내가 판매 중인 티켓
+                </NavLink>
+              )}
 
               <NavLink to="profile" className={menuClass}>
                 개인정보
@@ -69,7 +71,7 @@ export default function Mypage() {
 
         {/* 오른쪽 콘텐츠 */}
         <main className="min-w-0 flex-1">
-          <div className="min-h-125 rounded-xl bg-white p-8 shadow-sm">
+          <div className="min-h-125 rounded-xl bg-white p-4 shadow-sm sm:p-8">
             <Outlet />
           </div>
         </main>
