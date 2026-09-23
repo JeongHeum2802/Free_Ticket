@@ -42,6 +42,12 @@ export default function Mypage() {
             </div>
 
             <nav className="mt-5 flex flex-col gap-2">
+              {user?.role === "ADMIN" && (
+                <NavLink to="admin" className={menuClass}>
+                  관리자 대시보드
+                </NavLink>
+              )}
+
               <NavLink to="tickets" className={menuClass}>
                 내가 예매한 티켓
               </NavLink>

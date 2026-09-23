@@ -6,7 +6,7 @@ CREATE TABLE `users` (
                          `phonenumber` varchar(255) DEFAULT NULL,
                          `username` varchar(255) NOT NULL,
                          `role` enum('ADMIN','DIRECTOR','USER') NOT NULL,
-                         `status` enum('ACTIVE','DELETED') NOT NULL,
+                         `status` enum('ACTIVE','INACTIVE','DELETED') NOT NULL,
                          PRIMARY KEY (`id`),
                          UNIQUE KEY `UK6dotkott2kjsp8vw4d0m25fb7` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2

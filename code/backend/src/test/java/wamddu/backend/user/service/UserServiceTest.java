@@ -48,6 +48,25 @@ class UserServiceTest {
 
     private User user;
 
+    @Test
+    void inactiveUserCannotLogIn() {
+        user.setStatus(UserStatus.INACTIVE);
+        given(userRepository.findByEmail("user@example.com")).willReturn(user);
+        assertThatThrownBy(() -> userService.login(new LoginRequest("user@example.com", "password123!")))
+                .isInstanceOf(ApiException.class);
+        org.mockito.Mockito.verifyNoInteractions(jwtProvider);
+    }
+
+    @Test
+    void inactiveUserCannotRefreshTokens() {
+        user.setStatus(UserStatus.INACTIVE);
+        given(jwtProvider.validateToken("refresh")).willReturn(true);
+        given(jwtProvider.getId("refresh")).willReturn(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        assertThatThrownBy(() -> userService.reissueToken("refresh")).isInstanceOf(ApiException.class);
+        org.mockito.Mockito.verify(jwtProvider, org.mockito.Mockito.never()).generateRefreshToken(any());
+    }
+
     @BeforeEach
     void setUp() {
         user = User.builder()

@@ -17,6 +17,7 @@ import Profile from './pages/mypage/Profile';
 import SellingTickets from './pages/mypage/SellingTickets';
 import ProfileModify from './pages/mypage/ProfileModify';
 import PasswordReset from './pages/mypage/PasswordReset';
+import AdminDashboard from './pages/mypage/AdminDashboard';
 
 // 장르별 티켓 페이지
 import ConcertPage from './pages/eventpage/ConcertPage';
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="selling" element={<SellingTickets />} />
           <Route path="profileModify" element={<ProfileModify />} />
           <Route path="passwordreset" element={<PasswordReset />} />
+          <Route path="admin" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </div>
