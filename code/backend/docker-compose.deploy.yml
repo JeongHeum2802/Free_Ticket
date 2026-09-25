@@ -21,6 +21,7 @@ services:
   backend:
     build: .
     environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
       DB_URL: jdbc:mysql://mysql-db:3306/free_ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       DB_USERNAME: ${DB_USERNAME:?required}
       DB_PASSWORD: ${DB_PASSWORD:?required}
