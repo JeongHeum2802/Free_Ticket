@@ -1,3 +1,7 @@
+CREATE DATABASE IF NOT EXISTS `free_ticket`
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE `free_ticket`;
+
 CREATE TABLE `users` (
                          `id` bigint NOT NULL AUTO_INCREMENT,
                          `customer_key` varchar(255) DEFAULT NULL,

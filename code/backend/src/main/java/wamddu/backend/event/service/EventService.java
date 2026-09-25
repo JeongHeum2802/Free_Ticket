@@ -58,8 +58,7 @@ public class EventService {
                 }
             }
 
-            Pageable pageable = PageRequest.of(0, limit);
-            List<WhatsHotEventResponse> allEvents = eventRepository.whatshot(category, pageable);
+            List<WhatsHotEventResponse> allEvents = eventRepository.whatshot(category, limit);
 
             return new WhatsHotResponse(category, allEvents);
         } finally {

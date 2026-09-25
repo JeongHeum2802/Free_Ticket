@@ -24,13 +24,17 @@ public interface EventRepository extends JpaRepository<Event,Long> {
     List<EventSummaryResponse> getEventsByCategory(String category);
 
     @Query("SELECT new wamddu.backend.event.dto.response.WhatsHotEventResponse(" +
-            "DENSE_RANK () OVER (ORDER BY COALESCE(SUM(T.sold_ticket), 0) DESC), " +
-            "E.id, E.name, E.startDate, E.endDate, E.location, E.bannerImageUrl, E.mainImageUrl, E.category ) " +
+            "R.rankValue, E.id, E.name, E.startDate, E.endDate, E.location, E.bannerImageUrl, E.mainImageUrl, E.category) " +
+            "FROM (SELECT E.id AS eventId, E.endDate AS eventEndDate, " +
+            "DENSE_RANK() OVER (ORDER BY COALESCE(SUM(T.sold_ticket), 0) DESC) AS rankValue, " +
+            "COALESCE(SUM(T.sold_ticket), 0) AS soldCount " +
             "FROM Event E LEFT JOIN Ticket T ON T.event = E " +
             "WHERE (:category IS NULL OR :category = E.category) " +
-            "GROUP BY E " +
-            "ORDER BY COALESCE(SUM(T.sold_ticket), 0) DESC")
-    List<WhatsHotEventResponse> whatshot(String category, Pageable pageable);
+            "GROUP BY E.id, E.endDate " +
+            "ORDER BY soldCount DESC, E.endDate ASC, E.id ASC LIMIT :limit) R " +
+            "JOIN Event E ON E.id = R.eventId " +
+            "ORDER BY R.soldCount DESC, R.eventEndDate ASC, R.eventId ASC")
+    List<WhatsHotEventResponse> whatshot(String category, Integer limit);
 
     @Query("SELECT new wamddu.backend.event.dto.response.WeeklyRankingEventResponse(" +
             "DENSE_RANK () OVER (ORDER BY COALESCE(SUM(T.sold_ticket), 0) DESC), " +

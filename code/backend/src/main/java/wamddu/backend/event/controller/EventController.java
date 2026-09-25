@@ -9,12 +9,21 @@ import wamddu.backend.event.dto.response.WhatsHotResponse;
 import wamddu.backend.event.service.EventService;
 import wamddu.backend.global.response.ApiResponse;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
 @RestController
 @RequestMapping("/api/events")
 @RequiredArgsConstructor
 public class EventController {
 
     private final EventService eventService;
+    private static final long HOT_CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(5);
+    // ponytail: 서버별 캐시다. 여러 서버에서 같은 갱신 시점이 필요해지면 공유 캐시를 검토한다.
+    private final ConcurrentHashMap<HotKey, HotEntry> hotCache = new ConcurrentHashMap<>();
+
+    private record HotKey(String category, Integer limit) {}
+    private record HotEntry(WhatsHotResponse response, long loadedAtNanos) {}
 
     @GetMapping
     public ApiResponse<EventListResponse> getEvents(
@@ -30,7 +39,17 @@ public class EventController {
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "limit", required = false, defaultValue = "5") Integer limit
     ) {
-        return ApiResponse.success("WHAT'S HOT 이벤트 조회에 성공했습니다.", eventService.whatshot(category, limit));
+        var key = new HotKey(category, limit);
+        var entry = hotCache.get(key);
+        if (entry == null || System.nanoTime() - entry.loadedAtNanos() >= HOT_CACHE_TTL_NANOS) {
+            entry = hotCache.compute(key, (ignored, previous) -> {
+                if (previous != null && System.nanoTime() - previous.loadedAtNanos() < HOT_CACHE_TTL_NANOS) {
+                    return previous;
+                }
+                return new HotEntry(eventService.whatshot(category, limit), System.nanoTime());
+            });
+        }
+        return ApiResponse.success("WHAT'S HOT 이벤트 조회에 성공했습니다.", entry.response());
     }
 
     @GetMapping("/weekly-ranking")

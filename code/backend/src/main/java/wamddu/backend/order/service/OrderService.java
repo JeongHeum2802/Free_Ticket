@@ -42,10 +42,10 @@ public class OrderService {
     public CheckoutOrderResponse createOrder(CreateOrderRequest request, Long userId) {
         log.debug("[SQL CHECK] POST /api/orders START");
         try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
             Ticket ticket = ticketRepository.findByIdForUpdate(request.getTicketId())
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "존재하지 않는 티켓입니다."));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."));
 
             LocalDateTime now = LocalDateTime.now();
             if (ticket.getBookingEndtime() == null || !now.isBefore(ticket.getBookingEndtime())) {

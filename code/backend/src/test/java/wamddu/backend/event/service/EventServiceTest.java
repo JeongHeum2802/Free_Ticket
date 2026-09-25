@@ -21,7 +21,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
@@ -95,7 +94,7 @@ class EventServiceTest {
                 "드림씨어터", "http://example.com/banner.jpg", "http://example.com/main.jpg", "musical"
         );
         given(eventRepository.findAllCategories()).willReturn(List.of("musical"));
-        given(eventRepository.whatshot(eq("musical"), any())).willReturn(List.of(dto));
+        given(eventRepository.whatshot(eq("musical"), eq(5))).willReturn(List.of(dto));
 
         // when
         WhatsHotResponse response = eventService.whatshot("musical", 5);
