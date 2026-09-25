@@ -1,0 +1,63 @@
+services:
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.deploy
+      args:
+        VITE_TOSS_CLIENT_KEY: ${VITE_TOSS_CLIENT_KEY:?required}
+        VITE_NAVER_MAP_CLIENT_ID: ${VITE_NAVER_MAP_CLIENT_ID:?required}
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: .
+    environment:
+      DB_URL: jdbc:mysql://mysql-db:3306/free_ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USERNAME: ${DB_USERNAME:?required}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1800000}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:?required}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: "false"
+      LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVLET_DISPATCHERSERVLET: INFO
+      SERVICE_LOG_LEVEL: INFO
+      TZ: Asia/Seoul
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: free_ticket
+      MYSQL_USER: ${DB_USERNAME:?required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+      TZ: Asia/Seoul
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backup.sql:/docker-entrypoint-initdb.d/backup.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql -h 127.0.0.1 -u root -D free_ticket -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:
