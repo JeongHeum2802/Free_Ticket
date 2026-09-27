@@ -14,7 +14,11 @@ import wamddu.backend.global.exception.ApiException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -22,6 +26,7 @@ public class TossPaymentsClient {
     private static final Logger log = LoggerFactory.getLogger(TossPaymentsClient.class);
 
     private final RestClient restClient;
+    private final RestClient transactionClient;
     private final String secretKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -33,7 +38,43 @@ public class TossPaymentsClient {
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(30));
         this.restClient = RestClient.builder().baseUrl(apiBaseUrl).requestFactory(factory).build();
+        var transactionFactory = new SimpleClientHttpRequestFactory();
+        transactionFactory.setConnectTimeout(Duration.ofSeconds(5));
+        transactionFactory.setReadTimeout(Duration.ofSeconds(70));
+        this.transactionClient = RestClient.builder().baseUrl(apiBaseUrl).requestFactory(transactionFactory).build();
         this.secretKey = secretKey;
+    }
+
+    public List<TossTransactionResponse> getTransactions(
+            LocalDateTime startKst, LocalDateTime endKst, String startingAfter, int limit) {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("TOSS_SECRET_KEY is required for reconciliation");
+        }
+        if (limit < 1 || limit > 5000 || !startKst.isBefore(endKst)) {
+            throw new IllegalArgumentException("Invalid transaction lookup range or limit");
+        }
+        String credentials = Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+        try {
+            TossTransactionResponse[] response = transactionClient.get()
+                    .uri(builder -> {
+                        builder.path("/v1/transactions")
+                                .queryParam("startDate", startKst.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                                .queryParam("endDate", endKst.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                                .queryParam("limit", limit);
+                        if (startingAfter != null) builder.queryParam("startingAfter", startingAfter);
+                        return builder.build();
+                    })
+                    .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                    .retrieve().body(TossTransactionResponse[].class);
+            if (response == null) throw new IllegalStateException("Empty transaction lookup response");
+            return List.of(response);
+        } catch (RestClientResponseException exception) {
+            throw new IllegalStateException("Toss transaction lookup failed: HTTP " + exception.getStatusCode().value());
+        }
+    }
+
+    public record TossTransactionResponse(String mId, String transactionKey, String paymentKey,
+                                          String orderId, String status, String transactionAt) {
     }
 
     public TossPaymentResponse confirm(String paymentKey, String orderId, Long amount, String idempotencyKey) {
