@@ -211,6 +211,31 @@ class PaymentReconciliationIntegrationTest {
     }
 
     @Test
+    void fifteenCharacterMerchantStopsWindowAndFourteenCharacterRetryPreservesIdentity() {
+        var invalid = new TossTransactionResponse("123456789012345", "mid-boundary", "pay-1",
+                orderId, "CANCELED", "2026-01-01T01:00:00+09:00");
+        var valid = new TossTransactionResponse("12345678901234", "mid-boundary", "pay-1",
+                orderId, "CANCELED", "2026-01-01T01:00:00+09:00");
+        when(toss.getTransactions(any(), any(), isNull(), eq(500)))
+                .thenReturn(List.of(invalid)).thenReturn(List.of(valid));
+        Instant now = START.plus(Duration.ofHours(2));
+
+        assertThatThrownBy(() -> service.reconcileUntil(now))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Invalid Toss transaction");
+        assertThat(progress.findById((byte) 1).orElseThrow().getCompletedThroughUtc())
+                .isEqualTo(LocalDateTime.ofInstant(START, ZoneOffset.UTC));
+        assertThat(issues.count()).isZero();
+
+        assertThat(service.reconcileUntil(now).newIssues()).isEqualTo(1);
+        assertThat(issues.findAll().getFirst().getMerchantId()).isEqualTo(valid.mId());
+        assertThat(progress.findById((byte) 1).orElseThrow().getCompletedThroughUtc())
+                .isEqualTo(LocalDateTime.ofInstant(now.minus(Duration.ofMinutes(10)), ZoneOffset.UTC));
+        verify(toss, never()).cancel(anyString(), anyString(), anyString());
+        assertThat(orders.findByOrderId(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(payments.findByOrderOrderId(orderId).orElseThrow().getStatus()).isEqualTo("DONE");
+    }
+
+    @Test
     void enabledReconciliationRequiresAnOffsetStartTime() {
         assertThatThrownBy(() -> new PaymentReconciliationService(toss, orders, payments, issues,
                 progress, manager, "", true))
