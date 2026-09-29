@@ -1,9 +1,11 @@
 package wamddu.backend.event.controller;
 
 import org.junit.jupiter.api.Test;
+import wamddu.backend.event.dto.response.WhatsHotEventResponse;
 import wamddu.backend.event.dto.response.WhatsHotResponse;
 import wamddu.backend.event.service.EventService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -36,5 +38,25 @@ class EventControllerHotCacheTest {
         verify(service, times(1)).whatshot(null, 7);
         controller.whatshot(null, 5);
         verify(service, times(1)).whatshot(null, 5);
+    }
+
+    @Test
+    void weeklyRankingUsesTheSameCachedHotOrderAndRanks() {
+        var service = mock(EventService.class);
+        var early = new WhatsHotEventResponse(1L, 2L, "early", LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 10, 1), "Seoul", "banner-2", "poster-2", "musical");
+        var late = new WhatsHotEventResponse(1L, 1L, "late", LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 12, 1), "Seoul", "banner-1", "poster-1", "musical");
+        when(service.whatshot("musical", 5)).thenReturn(new WhatsHotResponse("musical", List.of(early, late)));
+        var controller = new EventController(service);
+
+        controller.whatshot("musical", 5);
+        var ranking = controller.getWeeklyRanking("musical", 5).getData();
+
+        assertThat(ranking.category()).isEqualTo("musical");
+        assertThat(ranking.events()).extracting("id").containsExactly(2L, 1L);
+        assertThat(ranking.events()).extracting("rank").containsExactly(1L, 1L);
+        assertThat(ranking.events()).extracting("mainImageUrl").containsExactly("poster-2", "poster-1");
+        verify(service, times(1)).whatshot("musical", 5);
     }
 }

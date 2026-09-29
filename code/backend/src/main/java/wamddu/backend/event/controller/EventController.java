@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import wamddu.backend.event.dto.response.EventDetailResponse;
 import wamddu.backend.event.dto.response.EventListResponse;
+import wamddu.backend.event.dto.response.WeeklyRankingEventResponse;
 import wamddu.backend.event.dto.response.WeeklyRankingResponse;
 import wamddu.backend.event.dto.response.WhatsHotResponse;
 import wamddu.backend.event.service.EventService;
@@ -39,6 +40,10 @@ public class EventController {
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "limit", required = false, defaultValue = "5") Integer limit
     ) {
+        return ApiResponse.success("WHAT'S HOT 이벤트 조회에 성공했습니다.", cachedHot(category, limit));
+    }
+
+    private WhatsHotResponse cachedHot(String category, Integer limit) {
         var key = new HotKey(category, limit);
         var entry = hotCache.get(key);
         if (entry == null || System.nanoTime() - entry.loadedAtNanos() >= HOT_CACHE_TTL_NANOS) {
@@ -49,7 +54,7 @@ public class EventController {
                 return new HotEntry(eventService.whatshot(category, limit), System.nanoTime());
             });
         }
-        return ApiResponse.success("WHAT'S HOT 이벤트 조회에 성공했습니다.", entry.response());
+        return entry.response();
     }
 
     @GetMapping("/weekly-ranking")
@@ -57,7 +62,13 @@ public class EventController {
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "limit", required = false, defaultValue = "5") Integer limit
     ) {
-        return ApiResponse.success("주간 이벤트 순위 조회에 성공했습니다.", eventService.weeklyRanking(category, limit));
+        var events = cachedHot(category, limit).events().stream()
+                .map(event -> new WeeklyRankingEventResponse(event.getRank(), event.getId(), event.getName(),
+                        event.getStartDate(), event.getEndDate(), event.getLocation(),
+                        event.getMainImageUrl(), event.getCategory()))
+                .toList();
+        return ApiResponse.success("주간 이벤트 순위 조회에 성공했습니다.",
+                new WeeklyRankingResponse(category, events));
     }
 
     @GetMapping("/{eventId}")

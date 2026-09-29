@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-import { getEvents, getWeeklyRanking, getWhatsHot } from "../../api/events";
+import { getEvents, getWhatsHot } from "../../api/events";
 import SlidePosts from "../../components/SlidePosts1";
 import type {
   EventCategory,
   EventSummary,
   HotEvent,
-  WeeklyRankedEvent,
 } from "../../types/Event";
 import PosterSection from "./PosterSection";
 import WeeklyRankingSection from "./WeeklyRankingSection";
@@ -44,10 +43,8 @@ export default function EventPageLayout({
 }: EventPageLayoutProps) {
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [hotEvents, setHotEvents] = useState<HotEvent[]>([]);
-  const [rankingEvents, setRankingEvents] = useState<WeeklyRankedEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [hotEventsError, setHotEventsError] = useState<string | null>(null);
-  const [rankingError, setRankingError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,16 +54,13 @@ export default function EventPageLayout({
       setLoading(true);
       setEvents([]);
       setHotEvents([]);
-      setRankingEvents([]);
       setEventsError(null);
       setHotEventsError(null);
-      setRankingError(null);
 
-      const [eventListResult, whatsHotResult, weeklyRankingResult] =
+      const [eventListResult, whatsHotResult] =
         await Promise.allSettled([
           getEvents(category),
           getWhatsHot({ category, limit: 5 }),
-          getWeeklyRanking({ category, limit: 5 }),
         ]);
 
       if (!active) {
@@ -86,17 +80,6 @@ export default function EventPageLayout({
       } else {
         setHotEventsError(
           getErrorMessage(whatsHotResult.reason, "인기 이벤트를 불러오지 못했습니다."),
-        );
-      }
-
-      if (weeklyRankingResult.status === "fulfilled") {
-        setRankingEvents(weeklyRankingResult.value);
-      } else {
-        setRankingError(
-          getErrorMessage(
-            weeklyRankingResult.reason,
-            "주간 이벤트 순위를 불러오지 못했습니다.",
-          ),
         );
       }
 
@@ -149,10 +132,10 @@ export default function EventPageLayout({
           </section>
 
           <section className="mb-24 bg-[#f7f7f7] py-20">
-            {rankingError ? (
-              <SectionMessage message={rankingError} error />
-            ) : rankingEvents.length > 0 ? (
-              <WeeklyRankingSection events={rankingEvents} />
+            {hotEventsError ? (
+              <SectionMessage message={hotEventsError} error />
+            ) : hotEvents.length > 0 ? (
+              <WeeklyRankingSection events={hotEvents} />
             ) : (
               <SectionMessage message="등록된 주간 순위가 없습니다." />
             )}
