@@ -206,8 +206,17 @@ public class TossPaymentsClient {
             String status,
             String method,
             Long totalAmount,
-            Receipt receipt
+            Receipt receipt,
+            String mId,
+            String currency,
+            Long balanceAmount,
+            List<Cancel> cancels
     ) {
+        public TossPaymentResponse(String paymentKey, String orderId, String status, String method,
+                                   Long totalAmount, Receipt receipt) {
+            this(paymentKey, orderId, status, method, totalAmount, receipt, null, null, null, null);
+        }
+        public record Cancel(Long cancelAmount, String cancelStatus, String canceledAt) {}
         public record Receipt(String url) {
         }
     }

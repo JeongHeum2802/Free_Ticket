@@ -84,6 +84,22 @@ class TossPaymentsClientTest {
     }
 
     @Test
+    void lookupParsesMerchantBalanceAndCompletedCancelEvidence() {
+        respond(200, """
+                {"paymentKey":"pay_1","orderId":"order_1","status":"CANCELED","mId":"mid123",
+                 "currency":"KRW","totalAmount":1000,"balanceAmount":0,
+                 "cancels":[{"cancelAmount":1000,"cancelStatus":"DONE","canceledAt":"2026-09-29T10:00:00+09:00"}]}
+                """);
+        var response = client.getPayment("pay_1");
+        assertThat(response.mId()).isEqualTo("mid123");
+        assertThat(response.currency()).isEqualTo("KRW");
+        assertThat(response.balanceAmount()).isZero();
+        assertThat(response.cancels()).hasSize(1);
+        assertThat(response.cancels().getFirst().cancelAmount()).isEqualTo(1000L);
+        assertThat(response.cancels().getFirst().cancelStatus()).isEqualTo("DONE");
+    }
+
+    @Test
     void lookupRejectsDifferentPaymentKey() {
         respond(200, "{\"paymentKey\":\"wrong\",\"status\":\"DONE\"}");
         assertThatThrownBy(() -> client.getPayment("pay_1"))

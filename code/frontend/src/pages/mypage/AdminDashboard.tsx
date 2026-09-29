@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { useAuth } from "../../context/AuthContext";
 import AdminCreateForm from "./AdminCreateForm";
-import { getAdminTable, getAdminTables, updateAdminTable, userChoices, type AdminTablePage, type AdminRowChange } from "../../api/admin";
+import AdminPaymentReconciliation from "./AdminPaymentReconciliation";
+import { getAdminTable, getAdminTables, updateAdminTable, userChoices, isAdminTableReadOnly, isAdminColumnReadOnly, type AdminTablePage, type AdminRowChange } from "../../api/admin";
 
 const buttonClass = "rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40";
 const tableLabels: Record<string, string> = {
@@ -13,6 +14,7 @@ const tableLabels: Record<string, string> = {
 
 export default function AdminDashboard() {
   const { user, loading } = useAuth();
+  const [tab, setTab] = useState("tables");
 
   if (loading) {
     return <div>로딩 중...</div>;
@@ -25,8 +27,17 @@ export default function AdminDashboard() {
   return (
     <section>
       <h1 className="text-2xl font-bold">관리자 대시보드</h1>
-      <p className="mt-2 text-sm text-gray-500">표의 변경은 수정 버튼으로 저장하고, 새 데이터는 아래 입력 폼에서 추가하세요.</p>
-      <TableBrowser key={user.id} />
+      <nav aria-label="관리자 메뉴" className="my-5 flex gap-2 border-b border-gray-200 pb-4">
+        <button className={`${buttonClass} ${tab === "tables" ? "bg-black text-white enabled:hover:bg-gray-800" : ""}`}
+          aria-pressed={tab === "tables"} onClick={() => setTab("tables")}>데이터 관리</button>
+        <button className={`${buttonClass} ${tab === "reconciliation" ? "bg-black text-white enabled:hover:bg-gray-800" : ""}`}
+          aria-pressed={tab === "reconciliation"} onClick={() => setTab("reconciliation")}>결제 불일치</button>
+      </nav>
+      <div hidden={tab !== "tables"}>
+        <p className="mt-2 text-sm text-gray-500">주문·결제는 조회만 가능합니다. 결제 관련 처리는 결제 불일치 탭의 전용 버튼을 사용하세요.</p>
+        <TableBrowser key={user.id} />
+      </div>
+      {tab === "reconciliation" && <AdminPaymentReconciliation key={user.id} />}
     </section>
   );
 }
@@ -88,6 +99,7 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
   const [deleted, setDeleted] = useState<number[]>([]);
   const hasEdits = data !== null && draft.some((row, r) => row.some((value, c) => value !== data.rows[r][c]));
   const dirty = hasEdits || deleted.length > 0;
+  const readOnly = isAdminTableReadOnly(table);
 
   useEffect(() => {
     if (!dirty && !saving && !adding) return;
@@ -112,7 +124,7 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
   const idIndex = data.columns.indexOf("id");
 
   function editCell(rowIndex: number, columnIndex: number, value: string | null) {
-    if (!data || saving) return;
+    if (!data || saving || isAdminColumnReadOnly(table, data.columns[columnIndex])) return;
     const normalized = value === "" && data.rows[rowIndex][columnIndex] === null ? null : value;
     const next = draft.map((row, r) => r === rowIndex ? row.map((old, c) => c === columnIndex ? normalized : old) : row);
     setDraft(next);
@@ -122,13 +134,14 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
   }
 
   function toggleDelete(rowIndex: number) {
+    if (readOnly || saving || adding) return;
     const next = deleted.includes(rowIndex) ? deleted.filter(index => index !== rowIndex) : [...deleted, rowIndex];
     setDeleted(next); setSaved(false); setSaveError("");
     onLockChange(hasEdits || next.length > 0);
   }
 
   async function save() {
-    if (!data || !dirty || saving) return;
+    if (!data || !dirty || saving || readOnly) return;
     const changes: AdminRowChange[] = [];
     draft.forEach((row, r) => {
       if (deleted.includes(r)) return;
@@ -163,7 +176,7 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
   }
 
   return <div>
-    <div className="mb-4 flex flex-wrap items-center gap-3">
+    {readOnly ? <p className="mb-4 text-sm text-gray-600">조회 전용입니다. 주문·결제 데이터는 직접 추가·수정·삭제할 수 없습니다.</p> : <div className="mb-4 flex flex-wrap items-center gap-3">
       <button className={`${buttonClass} bg-black text-white enabled:hover:bg-gray-800`} disabled={!dirty || saving} onClick={save}>
         {saving ? "수정 중..." : "수정"}
       </button>
@@ -173,19 +186,19 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
       {dirty && <span className="text-sm text-amber-700">저장하지 않은 변경 사항이 있습니다.</span>}
       {deleted.length > 0 && <span className="text-sm text-red-600">{deleted.length}행 삭제 예정</span>}
       {saved && <span role="status" className="text-sm text-green-700">수정 사항을 저장했습니다.</span>}
-    </div>
+    </div>}
     {saveError && <p role="alert" className="mb-4 text-sm text-red-600">{saveError}</p>}
     <p className="mb-3 text-sm text-gray-600">전체 {data.totalRows.toLocaleString()}행 · 페이지당 {data.size}행</p>
     <div className="max-h-[60vh] overflow-auto rounded-lg border border-gray-200" tabIndex={0} aria-label={`${table} 데이터`}>
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{table} 테이블 데이터</caption>
         <thead className="sticky top-0 bg-gray-100">
-          <tr>{data.columns.map(column => <th key={column} scope="col" className="whitespace-nowrap border-b border-gray-200 px-4 py-3 font-semibold">{column}</th>)}<th scope="col" className="px-4 py-3">작업</th></tr>
+          <tr>{data.columns.map(column => <th key={column} scope="col" className="whitespace-nowrap border-b border-gray-200 px-4 py-3 font-semibold">{column}</th>)}{!readOnly && <th scope="col" className="px-4 py-3">작업</th>}</tr>
         </thead>
         <tbody>
           {draft.map((row, rowIndex) => <tr key={rowIndex} className={`border-b border-gray-100 last:border-0 ${deleted.includes(rowIndex) ? "bg-red-50 opacity-60" : "hover:bg-gray-50"}`}>
             {row.map((value, index) => <td key={data.columns[index]} className="min-w-28 max-w-96 whitespace-pre-wrap break-words px-4 py-3 align-top">
-              {index === idIndex || (table === "users" && data.columns[index] === "customer_key") ? value : <div className="min-w-40">
+              {isAdminColumnReadOnly(table, data.columns[index]) ? value : <div className="min-w-40">
                 {userChoices(table, data.columns[index]) ? <select aria-label={`${data.columns[index]} (ID: ${row[idIndex]})`}
                   value={value ?? ""} disabled={saving || adding || deleted.includes(rowIndex)}
                   className={`w-full rounded border px-2 py-2 ${value !== data.rows[rowIndex][index] ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white"}`}
@@ -198,11 +211,11 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
                   onChange={event => editCell(rowIndex, index, event.target.value)} />}
               </div>}
             </td>)}
-            <td className="px-4 py-3 align-top"><button className={`${buttonClass} whitespace-nowrap text-red-600`} disabled={saving || adding}
+            {!readOnly && <td className="px-4 py-3 align-top"><button className={`${buttonClass} whitespace-nowrap text-red-600`} disabled={saving || adding}
               aria-label={`${deleted.includes(rowIndex) ? "삭제 취소" : "삭제"} (ID: ${row[idIndex]})`}
-              onClick={() => toggleDelete(rowIndex)}>{deleted.includes(rowIndex) ? "삭제 취소" : "삭제"}</button></td>
+              onClick={() => toggleDelete(rowIndex)}>{deleted.includes(rowIndex) ? "삭제 취소" : "삭제"}</button></td>}
           </tr>)}
-          {!data.rows.length && <tr><td colSpan={data.columns.length + 1} className="px-4 py-10 text-center text-gray-500">데이터가 없습니다.</td></tr>}
+          {!data.rows.length && <tr><td colSpan={data.columns.length + (readOnly ? 0 : 1)} className="px-4 py-10 text-center text-gray-500">데이터가 없습니다.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -211,7 +224,7 @@ function TableRows({ table, page, onPageChange, onLockChange }: {
       <span className="text-sm text-gray-600">{page + 1} / {Math.max(totalPages, page + 1)} 페이지</span>
       <button className={buttonClass} disabled={page + 1 >= totalPages || dirty || saving || adding} onClick={() => onPageChange(page + 1)}>다음</button>
     </div>
-    {table !== "orders" && table !== "payments" && <AdminCreateForm table={table} data={data} disabled={dirty || saving || adding}
+    {!readOnly && <AdminCreateForm table={table} data={data} disabled={dirty || saving || adding}
       onPending={pending => { setAdding(pending); onLockChange(pending || dirty); }}
       onCreated={result => { setData(result); setDraft(result.rows); setSaved(false); if (result.page !== page) onPageChange(result.page); }} />}
   </div>;

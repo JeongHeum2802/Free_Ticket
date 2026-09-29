@@ -30,14 +30,33 @@ function mount() {
   </Routes></MemoryRouter>);
 }
 
-test.each(["orders", "payments"])("%s has no creation form but keeps editing controls", async table => {
+test.each(["orders", "payments"])("%s is readable and paginated without mutation controls", async table => {
   vi.mocked(getAdminTables).mockResolvedValue([table]);
   mount();
-  expect(await screen.findByRole("textbox", { name: "name (ID: 1)" })).toBeTruthy();
+  expect(await screen.findByRole("columnheader", { name: "name" })).toBeTruthy();
+  expect(screen.queryByRole("textbox")).toBeNull();
   expect(screen.queryByRole("form", { name: "새 데이터 추가" })).toBeNull();
   expect(screen.queryByRole("button", { name: "추가" })).toBeNull();
-  expect(screen.getByRole("button", { name: "수정" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "삭제 (ID: 1)" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "수정" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "삭제 (ID: 1)" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "다음" }));
+  expect(await screen.findByText("second page")).toBeTruthy();
+  expect(updateAdminTable).not.toHaveBeenCalled();
+});
+
+test("ticket sale count is display-only in table and creation while descriptions can be edited", async () => {
+  vi.mocked(getAdminTables).mockResolvedValue(["tickets"]);
+  vi.mocked(getAdminTable).mockResolvedValue({ table: "tickets", columns: ["id", "sold_ticket", "description"],
+    rows: [["1", "2", "before"]], page: 0, size: 100, totalRows: 1,
+    createFields: [{ name: "sold_ticket", type: "number", required: true },
+      { name: "description", type: "text", required: false }] });
+  mount();
+  const input = await screen.findByRole("textbox", { name: "description (ID: 1)" });
+  expect(within(screen.getByRole("table")).getByText("2")).toBeTruthy();
+  expect(screen.queryByRole("textbox", { name: "sold_ticket (ID: 1)" })).toBeNull();
+  expect(screen.queryByLabelText("sold_ticket *")).toBeNull();
+  fireEvent.change(input, { target: { value: "after" } });
+  expect((screen.getByRole("button", { name: "수정" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 test("shows DB columns and nulls, paginates, and resets page when selecting another table", async () => {

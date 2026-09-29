@@ -36,4 +36,15 @@ public class PaymentReconciliationIssue {
     private LocalDateTime transactionAtUtc;
     @Column(name = "detected_at_utc", nullable = false)
     private LocalDateTime detectedAtUtc;
+    @Column(name = "resolved_at_utc")
+    private LocalDateTime resolvedAtUtc;
+    @Column(name = "resolved_by")
+    private Long resolvedBy;
+
+    public void resolve(LocalDateTime at, long actorId) {
+        if (resolvedAtUtc == null) {
+            resolvedAtUtc = at;
+            resolvedBy = actorId;
+        }
+    }
 }

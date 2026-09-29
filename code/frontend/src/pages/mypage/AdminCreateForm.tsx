@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from "react";
 import { isAxiosError } from "axios";
-import { updateAdminTable, userChoices, type AdminTablePage } from "../../api/admin";
+import { updateAdminTable, userChoices, isAdminColumnReadOnly, type AdminTablePage } from "../../api/admin";
 
 export default function AdminCreateForm({ table, data, disabled, onPending, onCreated }: {
   table: string; data: AdminTablePage; disabled: boolean;
@@ -11,7 +11,8 @@ export default function AdminCreateForm({ table, data, disabled, onPending, onCr
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const fields = data.createFields ?? data.columns.filter(name => name !== "id").map(name => ({ name, type: "text", required: true }));
+  const fields = (data.createFields ?? data.columns.map(name => ({ name, type: "text", required: true })))
+    .filter(field => !isAdminColumnReadOnly(table, field.name));
   const complete = fields.every(field => !field.required || Boolean(values[field.name]?.trim()));
 
   async function submit(event: FormEvent<HTMLFormElement>) {

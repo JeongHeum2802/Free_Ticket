@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import wamddu.backend.global.exception.ApiException;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class AdminTableService {
     }
 
     private List<CreateField> createFields(String table) {
+        if (table.equals("orders") || table.equals("payments")) return List.of();
         return jdbc.execute((ConnectionCallback<List<CreateField>>) connection -> {
             var fields = new ArrayList<CreateField>();
             try (var rs = connection.getMetaData().getColumns(connection.getCatalog(), connection.getSchema(), table, "%")) {
@@ -54,6 +56,7 @@ public class AdminTableService {
                     String name = rs.getString("COLUMN_NAME");
                     if (name.equalsIgnoreCase("id") || "YES".equals(rs.getString("IS_AUTOINCREMENT"))) continue;
                     if (table.equals("users") && name.equalsIgnoreCase("customer_key")) continue;
+                    if (table.equals("tickets") && name.equalsIgnoreCase("sold_ticket")) continue;
                     String type = switch (rs.getInt("DATA_TYPE")) {
                         case Types.TINYINT, Types.SMALLINT, Types.INTEGER, Types.BIGINT, Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.REAL, Types.DOUBLE -> "number";
                         case Types.DATE -> "date";
@@ -83,16 +86,28 @@ public class AdminTableService {
     public record RowChange(String id, Map<String, String> originalValues, Map<String, String> values) {}
     public record RowDeletion(String id, Map<String, String> originalValues) {}
 
-    @Transactional
+    private static void requireWritableTable(String table) {
+        if (table.equals("orders") || table.equals("payments")) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ADMIN_TABLE_READ_ONLY",
+                    "주문·결제는 조회만 가능합니다. 결제 불일치 탭의 전용 처리 버튼을 사용해 주세요.");
+        }
+    }
+
+    private static void requireWritableField(String table, String column) {
+        if (table.equals("tickets") && "sold_ticket".equalsIgnoreCase(column)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ADMIN_FIELD_READ_ONLY",
+                    "티켓 판매 수량은 결제 처리로만 변경할 수 있습니다.");
+        }
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TablePage save(String table, List<RowChange> changes, List<Map<String, String>> creations,
                           List<RowDeletion> deletions, int page, int size) {
         var snapshot = read(table, page, size);
+        requireWritableTable(table);
         changes = changes == null ? List.of() : changes;
         creations = creations == null ? List.of() : creations;
         deletions = deletions == null ? List.of() : deletions;
-        if (!creations.isEmpty() && (table.equals("orders") || table.equals("payments"))) {
-            throw invalidUpdate("주문과 결제는 관리자 대시보드에서 추가할 수 없습니다.");
-        }
         int count = changes.size() + creations.size() + deletions.size();
         if (count < 1 || count > 200 || creations.size() > 100 || deletions.size() > 100) {
             throw invalidUpdate("추가·수정·삭제할 행 개수가 올바르지 않습니다.");
@@ -119,6 +134,16 @@ public class AdminTableService {
                 if (current.isEmpty() || !current.getFirst().equals(deletion.originalValues())) {
                     throw new ApiException(HttpStatus.CONFLICT, "ROW_CHANGED", "삭제할 행이 변경되었습니다. 변경 취소 후 새로고침해 주세요.");
                 }
+                if (table.equals("tickets")) {
+                    String sold = current.getFirst().get("sold_ticket");
+                    // READ_COMMITTED sees orders committed while waiting for the ticket lock.
+                    // Order creation holds that same ticket lock; no order lock is needed here.
+                    boolean linked = !jdbc.queryForList("SELECT id FROM orders WHERE ticket_id = ? LIMIT 1", Long.class, id).isEmpty();
+                    if ((sold != null && Long.parseLong(sold) > 0) || linked) {
+                        throw new ApiException(HttpStatus.CONFLICT, "TICKET_HAS_ORDERS",
+                                "주문이 연결되었거나 판매된 티켓은 삭제할 수 없습니다.");
+                    }
+                }
                 jdbc.update("DELETE FROM " + quote(table) + " WHERE id = ?", id);
             }
             if (!changes.isEmpty()) update(table, changes, page, size);
@@ -135,11 +160,13 @@ public class AdminTableService {
                 var values = new java.util.LinkedHashMap<>(creation);
                 validateUserChoices(table, values);
                 for (String column : values.keySet()) {
+                    requireWritableField(table, column);
                     if (column == null || column.equalsIgnoreCase("id")
                             || (!snapshot.columns().contains(column) && !(table.equals("users") && column.equals("password")))) {
                         throw invalidUpdate("추가할 수 없는 열입니다.");
                     }
                 }
+                if (table.equals("tickets")) values.put("sold_ticket", "0");
                 if (table.equals("users")) {
                     String password = values.get("password");
                     if (password == null || password.isBlank()) throw invalidUpdate("초기 비밀번호를 입력해 주세요.");
@@ -169,6 +196,7 @@ public class AdminTableService {
     public TablePage update(String table, List<RowChange> changes, int page, int size) {
         // Validate table and pagination before performing any writes.
         var snapshot = read(table, page, size);
+        requireWritableTable(table);
         if (changes == null || changes.isEmpty() || changes.size() > 100) {
             throw invalidUpdate("수정할 행은 1~100개여야 합니다.");
         }
@@ -193,6 +221,7 @@ public class AdminTableService {
                 if (id < 1 || !ids.add(id)) throw invalidUpdate("행 ID가 잘못되었거나 중복되었습니다.");
                 var columns = new ArrayList<>(change.values().keySet());
                 for (String column : columns) {
+                    requireWritableField(table, column);
                     if (column == null || column.equalsIgnoreCase("id") || !snapshot.columns().contains(column)
                             || (table.equals("users") && column.equalsIgnoreCase("customer_key"))) {
                         throw invalidUpdate("수정할 수 없는 열입니다.");
