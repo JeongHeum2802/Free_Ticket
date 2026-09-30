@@ -37,7 +37,7 @@ export type SignupResponse = {
 export type RefreshResponse = {
   accessToken: string;
   tokenType: "Bearer";
-  expirseIn: number;
+  expiresIn: number;
 };
 
 export type MyInfoResponse = {

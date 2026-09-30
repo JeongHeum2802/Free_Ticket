@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import wamddu.backend.user.dto.request.*;
 import wamddu.backend.user.dto.response.*;
 import wamddu.backend.user.service.UserService;
+import java.time.Duration;
+import java.time.Instant;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,18 +30,18 @@ public class UserController {
     @PostMapping("/api/auth/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         LoginResult result = userService.login(request);
-        ResponseCookie cookie = createRefreshTokenCookie(result.refreshToken(), 604800);
+        ResponseCookie cookie = createRefreshTokenCookie(result.refreshToken(), result.refreshExpiresAt());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, expiredLegacyCookie().toString(), cookie.toString())
                 .body(result.response());
     }
 
     @PostMapping("/api/auth/refresh")
     public ResponseEntity<RefreshResponse> refresh(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
         TokenReissueResult result = userService.reissueToken(refreshToken);
-        ResponseCookie cookie = createRefreshTokenCookie(result.refreshToken(), 604800);
+        ResponseCookie cookie = createRefreshTokenCookie(result.refreshToken(), result.refreshExpiresAt());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, expiredLegacyCookie().toString(), cookie.toString())
                 .body(result.response());
     }
 
@@ -49,10 +51,11 @@ public class UserController {
     }
 
     @PostMapping("/api/auth/logout")
-    public ResponseEntity<MessageResponse> logout() {
+    public ResponseEntity<MessageResponse> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
+        userService.logout(refreshToken);
         ResponseCookie cookie = createExpiredRefreshTokenCookie();
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, expiredLegacyCookie().toString(), cookie.toString())
                 .body(MessageResponse.from("로그아웃되었습니다."));
     }
 
@@ -77,27 +80,29 @@ public class UserController {
         MessageResponse response = userService.deleteMyAccount(request, userDetails);
         ResponseCookie cookie = createExpiredRefreshTokenCookie();
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, expiredLegacyCookie().toString(), cookie.toString())
                 .body(response);
     }
 
-    private ResponseCookie createRefreshTokenCookie(String refreshToken, long maxAge) {
-        return ResponseCookie.from("refreshToken", refreshToken)
+    private ResponseCookie createRefreshTokenCookie(String refreshToken, Instant expiresAt) {
+        return refreshCookie(refreshToken, "/api/auth", Math.max(0, Duration.between(Instant.now(), expiresAt).getSeconds()));
+    }
+
+    private ResponseCookie refreshCookie(String value, String path, long maxAge) {
+        return ResponseCookie.from("refreshToken", value)
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Lax")
-                .path("/api/auth/refresh")
+                .path(path)
                 .maxAge(maxAge)
                 .build();
     }
 
     private ResponseCookie createExpiredRefreshTokenCookie() {
-        return ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Lax")
-                .path("/api/auth/refresh")
-                .maxAge(0)
-                .build();
+        return refreshCookie("", "/api/auth", 0);
+    }
+
+    private ResponseCookie expiredLegacyCookie() {
+        return refreshCookie("", "/api/auth/refresh", 0);
     }
 }

@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
+import wamddu.backend.user.domain.Role;
 
 @Component
 public class JwtProvider {
@@ -29,10 +31,13 @@ public class JwtProvider {
 
     public JwtProvider(
             @Value("${SECRET_KEY}") String secretKey,
-            @Value("${EXPIRATION}") long expirationTime
+            @Value("${jwt.access-expiration-ms:600000}") long expirationTime
     ) {
+        if (expirationTime < 1000 || expirationTime > Integer.MAX_VALUE * 1000L) {
+            throw new IllegalArgumentException("Access token lifetime must fit positive whole seconds");
+        }
         this.secretKey = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-        this.expirationTime = expirationTime;
+        this.expirationTime = expirationTime / 1000 * 1000;
     }
 
     public String generateJwtToken(Long id, String role) {
@@ -41,6 +46,7 @@ public class JwtProvider {
 
         return Jwts.builder()
                 .subject(id.toString())
+                .claim("token_use", "access")
                 .claim("role", role)
                 .issuedAt(now)
                 .expiration(validity)
@@ -49,12 +55,22 @@ public class JwtProvider {
     }
 
     public String generateRefreshToken(Long id) {
-        Date now = new Date();
-        Date validity = new Date(now.getTime() + REFRESH_TOKEN_EXPIRATION_MS);
+        return refreshToken(id.toString(), UUID.randomUUID().toString(),
+                new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_MS));
+    }
+
+    public String rotateRefreshToken(Claims claims) {
+        return refreshToken(claims.getSubject(), claims.get("family_id", String.class), claims.getExpiration());
+    }
+
+    private String refreshToken(String subject, String familyId, Date validity) {
 
         return Jwts.builder()
-                .subject(id.toString())
-                .issuedAt(now)
+                .subject(subject)
+                .claim("token_use", "refresh")
+                .claim("family_id", familyId)
+                .id(UUID.randomUUID().toString())
+                .issuedAt(new Date())
                 .expiration(validity)
                 .signWith(secretKey)
                 .compact();
@@ -62,10 +78,7 @@ public class JwtProvider {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
+            accessClaims(token);
             return true;
         } catch (ExpiredJwtException ex) {
             throw ex;
@@ -75,11 +88,7 @@ public class JwtProvider {
     }
 
     public Authentication getAuthentication(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = accessClaims(token);
 
         Long userId = Long.parseLong(claims.getSubject());
         String role = claims.get("role", String.class);
@@ -91,13 +100,38 @@ public class JwtProvider {
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 
-    public Long getId(String token) {
+    public Claims parseRefreshToken(String token) {
+        Claims claims = parseClaims(token, "refresh");
+        if (claims.get("family_id", String.class) == null || claims.getId() == null) {
+            throw new JwtException("Missing refresh token identifiers");
+        }
+        UUID.fromString(claims.get("family_id", String.class));
+        UUID.fromString(claims.getId());
+        return claims;
+    }
+
+    public int getAccessExpiresIn() {
+        return Math.toIntExact(expirationTime / 1000);
+    }
+
+    private Claims accessClaims(String token) {
+        Claims claims = parseClaims(token, "access");
+        if (claims.get("role", String.class) == null) throw new JwtException("Missing access token role");
+        Role.valueOf(claims.get("role", String.class));
+        return claims;
+    }
+
+    private Claims parseClaims(String token, String purpose) {
         Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
+                .require("token_use", purpose)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        return Long.parseLong(claims.getSubject());
+        if (claims.getExpiration() == null || claims.getSubject() == null
+                || Long.parseLong(claims.getSubject()) <= 0) {
+            throw new JwtException("Missing or invalid token claims");
+        }
+        return claims;
     }
 }

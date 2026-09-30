@@ -1,4 +1,4 @@
 package wamddu.backend.user.dto.response;
 
-public record LoginResult(LoginResponse response, String refreshToken) {
+public record LoginResult(LoginResponse response, String refreshToken, java.time.Instant refreshExpiresAt) {
 }

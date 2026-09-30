@@ -1,6 +1,8 @@
 package wamddu.backend.user.service;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -8,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.global.security.JwtProvider;
 import wamddu.backend.eventDirector.repository.EventDirectorRepository;
@@ -31,6 +34,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final EventDirectorRepository eventDirectorRepository;
     private final JwtProvider jwtProvider;
+    private final RefreshTokenStore refreshTokenStore;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
 
@@ -85,22 +89,25 @@ public class UserService {
 
             String accessToken = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
             String refreshToken = jwtProvider.generateRefreshToken(user.getId());
+            Claims refreshClaims = jwtProvider.parseRefreshToken(refreshToken);
+            refreshTokenStore.save(refreshClaims.get("family_id", String.class), user.getId(), refreshToken,
+                    refreshClaims.getExpiration().toInstant());
 
             LoginResponse response = LoginResponse.builder()
                     .message("로그인에 성공했습니다.")
                     .accessToken(accessToken)
                     .tokenType("Bearer")
-                    .expiresIn(1800)
+                    .expiresIn(jwtProvider.getAccessExpiresIn())
                     .user(toUserInfo(user))
                     .build();
 
-            return new LoginResult(response, refreshToken);
+            return new LoginResult(response, refreshToken, refreshClaims.getExpiration().toInstant());
         } finally {
             log.debug("[SQL CHECK] POST /api/auth/login END");
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public TokenReissueResult reissueToken(String refreshToken) {
         log.debug("[SQL CHECK] POST /api/auth/refresh START");
         try {
@@ -108,35 +115,51 @@ public class UserService {
                 throw new ApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_NOT_FOUND", "로그인 정보가 없습니다.");
             }
 
+            Claims refreshClaims;
             try {
-                if (!jwtProvider.validateToken(refreshToken)) {
-                    throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
-                }
+                refreshClaims = jwtProvider.parseRefreshToken(refreshToken);
             } catch (ExpiredJwtException exception) {
                 throw new ApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
+            } catch (JwtException | IllegalArgumentException exception) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "유효하지 않은 로그인 정보입니다. 다시 로그인해 주세요.");
             }
 
-            Long id = jwtProvider.getId(refreshToken);
+            Long id = Long.parseLong(refreshClaims.getSubject());
             User user = userRepository.findById(id)
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REVOKED", "로그인 정보가 폐기되었습니다."));
 
             if (user.getStatus() != UserStatus.ACTIVE) {
-                throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REVOKED", "로그인 정보가 폐기되었습니다.");
             }
 
+            String newRefreshToken = jwtProvider.rotateRefreshToken(refreshClaims);
+            if (!refreshTokenStore.rotate(refreshClaims.get("family_id", String.class), id, refreshToken, newRefreshToken)) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REVOKED", "로그인 정보가 폐기되었습니다. 다시 로그인해 주세요.");
+            }
             String newToken = jwtProvider.generateJwtToken(user.getId(), user.getRole().name());
-            String newRefreshToken = jwtProvider.generateRefreshToken(user.getId());
 
             RefreshResponse response = RefreshResponse.builder()
                     .accessToken(newToken)
                     .tokenType("Bearer")
-                    .expiresIn(1800)
+                    .expiresIn(jwtProvider.getAccessExpiresIn())
                     .build();
 
-            return new TokenReissueResult(response, newRefreshToken);
+            return new TokenReissueResult(response, newRefreshToken, refreshClaims.getExpiration().toInstant());
         } finally {
             log.debug("[SQL CHECK] POST /api/auth/refresh END");
         }
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken == null) return;
+        Claims claims;
+        try {
+            claims = jwtProvider.parseRefreshToken(refreshToken);
+        } catch (JwtException | IllegalArgumentException invalid) {
+            return; // Logout is idempotent even when the cookie is invalid or expired.
+        }
+        refreshTokenStore.revoke(claims.get("family_id", String.class));
     }
 
     public MyInfoResponse getMyInfo(UserDetails userDetails) {
@@ -218,6 +241,7 @@ public class UserService {
             String newPassword = passwordEncoder.encode(request.getNewPassword());
             user.setPassword(newPassword);
             userRepository.save(user);
+            refreshTokenStore.revokeAll(user.getId());
 
             return MessageResponse.from("비밀번호가 변경되었습니다.");
         } finally {
@@ -246,6 +270,7 @@ public class UserService {
                 user.setPhonenumber("deleted_" + System.currentTimeMillis() + "_" + user.getPhonenumber());
             }
             userRepository.save(user);
+            refreshTokenStore.revokeAll(user.getId());
             return MessageResponse.from("회원 탈퇴가 완료되었습니다.");
         } finally {
             log.debug("[SQL CHECK] DELETE /api/users/me END");

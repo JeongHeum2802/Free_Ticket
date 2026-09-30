@@ -1,10 +1,13 @@
 import { useAuth } from "../../context/AuthContext";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 
 export default function Mypage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const menuClass = ({ isActive }: { isActive: boolean }) =>
     `block rounded-lg px-4 py-3 transition-colors ${isActive
@@ -13,10 +16,17 @@ export default function Mypage() {
     }`;
 
   const handleClickLogout = async () => {
-      navigate("/", { replace:true });
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
       await logout();
       alert("로그아웃이 완료되었습니다.");
-      window.location.replace("/");
+      navigate("/", { replace: true });
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : "로그아웃하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   return (
@@ -35,10 +45,12 @@ export default function Mypage() {
                 <button
                   className="hover:bg-gray-800 rounded-xl p-2 bg-black text-white"
                   onClick={handleClickLogout}
+                  disabled={loggingOut}
                 >
                   로그아웃
                 </button>
               </div>
+              {logoutError && <p role="alert" className="mt-2 text-sm text-red-600">{logoutError}</p>}
             </div>
 
             <nav className="mt-5 flex flex-col gap-2">

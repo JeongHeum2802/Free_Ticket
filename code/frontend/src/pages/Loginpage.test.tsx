@@ -5,13 +5,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import Loginpage from "./Loginpage";
 
-const { signupApiMock } = vi.hoisted(() => ({
+const { signupApiMock, loginMock } = vi.hoisted(() => ({
   signupApiMock: vi.fn(),
+  loginMock: vi.fn(),
 }));
 
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({
-    login: vi.fn(),
+    login: loginMock,
   }),
 }));
 
@@ -26,10 +27,19 @@ vi.mock("../api/auth", () => ({
 describe("Loginpage 약관 동의", () => {
   beforeEach(() => {
     signupApiMock.mockReset();
+    loginMock.mockReset();
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  test("지원하지 않는 브라우저의 로그인 안내를 사용자에게 표시한다", async () => {
+    const message = "이 브라우저에서는 안전한 로그인을 사용할 수 없습니다. HTTPS 또는 localhost에서 최신 Chrome 또는 Edge 브라우저를 사용해 주세요.";
+    loginMock.mockRejectedValue(new Error(message));
+    render(<Loginpage />);
+    fireEvent.submit(screen.getByPlaceholderText("이메일").closest("form")!);
+    expect(await screen.findByText(message)).toBeTruthy();
   });
 
   test("각 문서를 끝까지 읽고 동의 버튼을 누르면 해당 체크박스가 선택된다", () => {

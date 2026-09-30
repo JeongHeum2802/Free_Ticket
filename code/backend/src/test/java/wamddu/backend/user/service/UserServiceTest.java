@@ -21,6 +21,8 @@ import wamddu.backend.user.dto.response.*;
 import wamddu.backend.user.repository.UserRepository;
 
 import java.util.Optional;
+import io.jsonwebtoken.Jwts;
+import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,6 +45,9 @@ class UserServiceTest {
     @Mock
     private JwtProvider jwtProvider;
 
+    @Mock
+    private RefreshTokenStore refreshTokenStore;
+
     @InjectMocks
     private UserService userService;
 
@@ -60,8 +65,7 @@ class UserServiceTest {
     @Test
     void inactiveUserCannotRefreshTokens() {
         user.setStatus(UserStatus.INACTIVE);
-        given(jwtProvider.validateToken("refresh")).willReturn(true);
-        given(jwtProvider.getId("refresh")).willReturn(1L);
+        given(jwtProvider.parseRefreshToken("refresh")).willReturn(Jwts.claims().subject("1").build());
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         assertThatThrownBy(() -> userService.reissueToken("refresh")).isInstanceOf(ApiException.class);
         org.mockito.Mockito.verify(jwtProvider, org.mockito.Mockito.never()).generateRefreshToken(any());
@@ -129,6 +133,9 @@ class UserServiceTest {
         given(passwordEncoder.matches("password123!", "encoded_password")).willReturn(true);
         given(jwtProvider.generateJwtToken(1L, "USER")).willReturn("access_token");
         given(jwtProvider.generateRefreshToken(1L)).willReturn("refresh_token");
+        given(jwtProvider.parseRefreshToken("refresh_token")).willReturn(Jwts.claims().subject("1")
+                .add("family_id", "test-family").expiration(new Date(System.currentTimeMillis() + 604800000L)).build());
+        given(jwtProvider.getAccessExpiresIn()).willReturn(600);
         given(eventDirectorRepository.existsByUserId(1L)).willReturn(true);
 
         // when

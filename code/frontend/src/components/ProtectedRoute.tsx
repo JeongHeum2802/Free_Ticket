@@ -7,10 +7,17 @@ type ProtectedRouteProps = {
 };
 
 function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, restoreError, retryRestore } = useAuth();
 
   if (loading) {
     return <div>로딩 중...</div>;
+  }
+
+  if (!user && restoreError) {
+    return <div className="p-6 text-center">
+      <p role="alert">{restoreError}</p>
+      <button type="button" onClick={() => void retryRestore()} className="mt-4 rounded bg-black px-4 py-2 text-white">다시 시도</button>
+    </div>;
   }
 
   if (user == null) {

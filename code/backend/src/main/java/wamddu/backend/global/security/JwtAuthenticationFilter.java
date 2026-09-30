@@ -2,6 +2,7 @@ package wamddu.backend.global.security;
 
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,6 +59,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (ExpiredJwtException ex) {
             sendErrorMessage(response, HttpStatus.UNAUTHORIZED, "ACCESS_TOKEN_EXPIRED", "Access Token이 만료되었습니다.");
+            return;
+        } catch (JwtException | IllegalArgumentException ex) {
+            sendErrorMessage(response, HttpStatus.UNAUTHORIZED, "INVALID_ACCESS_TOKEN", "유효하지 않은 Access Token 입니다.");
             return;
         } catch (Exception ex) {
             sendErrorMessage(response, HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류 발생");

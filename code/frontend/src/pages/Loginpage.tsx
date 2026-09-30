@@ -106,7 +106,7 @@ export default function Loginpage() {
         return;
       }
 
-      setErrorMessage("예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      setErrorMessage(error instanceof Error ? error.message : "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
 

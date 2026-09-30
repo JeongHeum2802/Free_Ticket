@@ -1,28 +1,15 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-import {
-  getMyInfoApi,
-  loginApi,
-  logoutApi,
-  refreshApi,
-} from "../api/auth";
-
-import { setAccessToken as setAxiosAccessToken } from "../api/token";
-
+import { getMyInfoApi, loginApi, logoutApi, refreshApi } from "../api/auth";
+import { getAuthGeneration } from "../api/token";
 import type { LoginRequest, User } from "../types/Auth";
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  accessToken: string | null;
+  restoreError: string | null;
+  retryRestore: () => Promise<void>;
   login: (data: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
@@ -32,93 +19,76 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
+  const [loading, setLoading] = useState(true);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const saveAccessToken = (token: string | null) => {
-    setAccessToken(token); // react context 상태
-    setAxiosAccessToken(token); // Axios 요청 인터셉터가 사용하는 상태
-  }
-
-  const login = async (data: LoginRequest) => {
-    const response = await loginApi(data);
-
-    saveAccessToken(response.accessToken);
-    setUser(response.user);
-  }
-
-  const logout = async () => {
+  const restoreAuth = useCallback(async () => {
+    const generation = getAuthGeneration();
     try {
-      await logoutApi();
+      await refreshApi();
+      if (generation !== getAuthGeneration()) return;
+      const response = await getMyInfoApi();
+      if (generation === getAuthGeneration()) setUser(response.user);
     } catch (error) {
-      // 서버 로그아웃이 실패해도 클라이언트 상태는 정리
-      console.error("서버 로그아웃 실패:", error);
-    } finally {
-      saveAccessToken(null);
-      setUser(null);
-    }
-  };
-  
-  useEffect(() => {
-    // 새로고침시 local storage가 아닌 백엔드 요청으로 정보 갱신
-    const restoreAuth = async () => {
-      try {
-        // 새 access token 발급
-        const refreshResponse = await refreshApi();
-        
-        const newAccessToken = refreshResponse.accessToken;
-        saveAccessToken(newAccessToken);
-
-        // 새 access token으로 최신 사용자 정보 조회
-        const userResponse = await getMyInfoApi();
-        setUser(userResponse.user);
-      } catch {
-        saveAccessToken(null);
-        setUser(null);
-      } finally {
-        setLoading(false);
+      if (generation === getAuthGeneration() && !axios.isCancel(error)) {
+        setRestoreError(error instanceof Error && !axios.isAxiosError(error) ? error.message
+          : "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
+    } finally {
+      if (generation === getAuthGeneration()) setLoading(false);
     }
-
-    restoreAuth();
   }, []);
 
-  // 브라우저에서 로그아웃 이벤트 발생시 ( refresh 만료시 ) 초기화
-  useEffect(() => {
-
-    const handleAuthLogout = () => {
-      setAccessToken(null);
-      setUser(null);
-      navigate("/", { replace: true });
-    };
-
-    window.addEventListener("auth:logout", handleAuthLogout);
-
-    return () => {
-      window.removeEventListener("auth:logout", handleAuthLogout);
-    }
-  }, [navigate]);
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    accessToken,
-    login,
-    logout,
-    setUser,
+  const retryRestore = () => {
+    setLoading(true);
+    setRestoreError(null);
+    return restoreAuth();
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const login = async (data: LoginRequest) => {
+    const pending = loginApi(data);
+    const generation = getAuthGeneration();
+    try {
+      const response = await pending;
+      if (generation + 1 === getAuthGeneration()) {
+        setUser(response.user);
+        setRestoreError(null);
+      }
+    } finally {
+      if (generation === getAuthGeneration() || generation + 1 === getAuthGeneration()) setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    const pending = logoutApi();
+    const generation = getAuthGeneration();
+    await pending;
+    if (generation + 1 === getAuthGeneration()) {
+      setUser(null);
+      setRestoreError(null);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void Promise.resolve().then(restoreAuth); }, [restoreAuth]);
+
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setUser(null);
+      setRestoreError(null);
+      setLoading(false);
+      if (user) navigate("/", { replace: true });
+    };
+    window.addEventListener("auth:logout", handleAuthLogout);
+    return () => window.removeEventListener("auth:logout", handleAuthLogout);
+  }, [navigate, user]);
+
+  return <AuthContext.Provider value={{ user, loading, restoreError, retryRestore, login, logout, setUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth는 AuthProvider 내부에서만 사용할 수 있습니다.");
-  }
-
+  if (!context) throw new Error("useAuth는 AuthProvider 내부에서만 사용할 수 있습니다.");
   return context;
 }

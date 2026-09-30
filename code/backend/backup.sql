@@ -16,6 +16,16 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2
   DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE refresh_tokens (
+    id VARCHAR(36) NOT NULL,
+    user_id BIGINT NOT NULL,
+    token_hash VARCHAR(64) NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_refresh_token_user (user_id),
+    KEY idx_refresh_token_expiry (expires_at)
+);
+
 CREATE TABLE `events` (
                           `end_date` date NOT NULL,
                           `running_time` int DEFAULT NULL,
