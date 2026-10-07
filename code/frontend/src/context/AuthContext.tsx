@@ -65,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const generation = getAuthGeneration();
     await pending;
     if (generation + 1 === getAuthGeneration()) {
+      alert("로그아웃 되었습니다.");
       startTransition(() => {
         setUser(null);
         setRestoreError(null);
