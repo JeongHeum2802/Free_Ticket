@@ -1,11 +1,10 @@
 import { useAuth } from "../../context/AuthContext";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 
 
 export default function Mypage() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -20,8 +19,6 @@ export default function Mypage() {
     setLogoutError(null);
     try {
       await logout();
-      alert("로그아웃이 완료되었습니다.");
-      navigate("/", { replace: true });
     } catch (error) {
       setLogoutError(error instanceof Error ? error.message : "로그아웃하지 못했습니다. 다시 시도해 주세요.");
     } finally {

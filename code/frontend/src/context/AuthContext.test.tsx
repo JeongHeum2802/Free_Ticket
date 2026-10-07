@@ -102,6 +102,20 @@ test("failed server logout retains the authenticated user and token", async () =
   expect(getAccessToken()).toBe(RESTORED_TOKEN);
 });
 
+test("successful logout goes straight home without a dialog", async () => {
+  render(<MemoryRouter initialEntries={["/mypage"]}><AuthProvider><Routes>
+    <Route path="/mypage" element={<ProtectedRoute><Mypage /></ProtectedRoute>} />
+    <Route path="/login" element={<p>로그인 화면</p>} />
+    <Route path="/" element={<p>홈 화면</p>} />
+  </Routes></AuthProvider></MemoryRouter>);
+  expect(await screen.findByText("기존 사용자님")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  expect(await screen.findByText("홈 화면")).toBeTruthy();
+  expect(screen.queryByText("로그인 화면")).toBeNull();
+  expect(getAccessToken()).toBeNull();
+  expect(window.alert).not.toHaveBeenCalled();
+});
+
 test("the logout button reports server failure without showing completion or navigating away", async () => {
   render(<MemoryRouter initialEntries={["/mypage"]}><AuthProvider><Routes>
     <Route path="/mypage" element={<Mypage />} />

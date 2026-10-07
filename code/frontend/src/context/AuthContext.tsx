@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { getMyInfoApi, loginApi, logoutApi, refreshApi } from "../api/auth";
@@ -65,9 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const generation = getAuthGeneration();
     await pending;
     if (generation + 1 === getAuthGeneration()) {
-      setUser(null);
-      setRestoreError(null);
-      setLoading(false);
+      startTransition(() => {
+        setUser(null);
+        setRestoreError(null);
+        setLoading(false);
+        navigate("/", { replace: true });
+      });
     }
   };
 
