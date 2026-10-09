@@ -44,6 +44,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findAllByUserIdAndStatusOrderByPaidAtDesc(Long userId, OrderStatus status);
 
+    @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O WHERE O.ticket_id = :ticketId " +
+            "AND O.status = wamddu.backend.order.domain.OrderStatus.PAID " +
+            "AND O.paidAt >= :from AND O.paidAt < :to")
+    Long sumPaidQuantity(@Param("ticketId") Long ticketId,
+                         @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     @Query("SELECT O.id FROM Order O WHERE O.status IN " +
             "(wamddu.backend.order.domain.OrderStatus.CONFIRMING, wamddu.backend.order.domain.OrderStatus.CANCELING) " +
             "AND O.recoveryReviewRequired = false AND (O.nextRecoveryAt IS NULL OR O.nextRecoveryAt <= :now) " +

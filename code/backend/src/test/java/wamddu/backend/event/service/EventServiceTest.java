@@ -120,7 +120,7 @@ class EventServiceTest {
     @DisplayName("이벤트 상세 및 티켓 옵션 조회 성공 테스트")
     void getDetail_Success() {
         // given
-        Ticket ticket = new Ticket(1L, "VIP석", 150000, 100, 10, "최고의 자리", LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(10), event);
+        Ticket ticket = new Ticket(1L, "VIP석", 150000, 100, 10, "최고의 자리", LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(10), event, null, null, null, null, false);
 
         given(eventRepository.findById(101L)).willReturn(Optional.of(event));
         given(ticketRepository.getAllEventTickets(101L)).willReturn(List.of(ticket));

@@ -33,6 +33,13 @@ public class Ticket {
     @JoinColumn(name = "event_id")
     private Event event;
 
+    private Integer initialPrice;
+    private Integer minPrice;
+    private LocalDateTime salesStartAt;
+    private LocalDateTime lastPriceEvaluatedAt;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean automaticPricingEnabled;
+
     public Integer getRemainingTickets() {
         return this.total_ticket - this.sold_ticket;
     }

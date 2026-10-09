@@ -5,8 +5,7 @@ import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
-@Table(name = "payment_reconciliation_action", indexes =
-        @Index(name = "idx_payment_recon_action_issue", columnList = "issue_id,id"))
+@Table(name = "payment_reconciliation_action")
 @Getter
 @Builder
 @NoArgsConstructor

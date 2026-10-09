@@ -3,14 +3,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import SellingTickets from "./SellingTickets";
 import TicketPriceChart from "../../components/TicketPriceChart";
-import { getSellingTickets, getTicketPriceHistory, type SellingTicket } from "../../api/sellingTickets";
+import { getSellingTickets, getTicketPriceHistory, updateTicketPriceSettings, type SellingTicket } from "../../api/sellingTickets";
 
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { id: 1, eventDirector: true }, loading: false }) }));
-vi.mock("../../api/sellingTickets", () => ({ getSellingTickets: vi.fn(), getTicketPriceHistory: vi.fn() }));
+vi.mock("../../api/sellingTickets", () => ({ getSellingTickets: vi.fn(), getTicketPriceHistory: vi.fn(), updateTicketPriceSettings: vi.fn() }));
 
 const ticket: SellingTicket = {
   id: 1, eventId: 101, eventName: "별빛 아래 우리", type: "프리미엄석", price: 150000,
   totalTicket: 100, soldTicket: 20, startTime: "2026-08-05T19:30:00", bookingEndtime: "2026-08-04T19:30:00",
+  initialPrice: null, minPrice: null, salesStartAt: null, automaticPricingEnabled: false, lastPriceEvaluatedAt: null,
 };
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
@@ -66,4 +67,20 @@ test("가격 기록이 한 건이고 0원이어도 유효한 점으로 표시한
   render(<TicketPriceChart history={[{ id: 1, price: 0, changedAt: "2026-07-06T19:30:00" }]} />);
   expect(screen.getByRole("button", { name: /0원/ }).getAttribute("cx")).toBe("395");
   expect(screen.getByRole("button", { name: /0원/ }).getAttribute("cy")).toBe("235");
+});
+
+test("설정 저장 후 목록의 판매가와 가격 이력을 함께 갱신한다", async () => {
+  const updated = { ...ticket, price: 110000 };
+  vi.mocked(getSellingTickets).mockResolvedValue([ticket]);
+  vi.mocked(getTicketPriceHistory).mockResolvedValueOnce({ ticket, history: [] })
+    .mockResolvedValueOnce({ ticket: updated, history: [{ id: 1, price: 110000, changedAt: "2026-07-06T19:30:00" }] });
+  vi.mocked(updateTicketPriceSettings).mockResolvedValue(updated);
+  render(<SellingTickets />);
+  fireEvent.click(await screen.findByRole("button", { name: /프리미엄석/ }));
+  fireEvent.change(await screen.findByLabelText("가격 수정"), { target: { value: "110000" } });
+  fireEvent.click(screen.getByRole("button", { name: "설정 저장" }));
+  expect(await screen.findByRole("img", { name: /티켓 가격 변동 차트/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /프리미엄석/ }).textContent).toContain("110,000원");
+  expect(screen.getByText("전체 변경 내역 (1건)")).toBeTruthy();
+  expect(screen.getByRole("status")).toHaveProperty("textContent", "가격 설정을 저장했습니다.");
 });

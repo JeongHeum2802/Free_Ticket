@@ -11,8 +11,7 @@ CREATE TABLE payment_reconciliation_issue (
     transaction_at_utc DATETIME(6) NOT NULL,
     detected_at_utc DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_payment_recon_transaction (merchant_id, transaction_key),
-    KEY idx_payment_recon_detected_at (detected_at_utc)
+    UNIQUE KEY uk_payment_recon_transaction (merchant_id, transaction_key)
 );
 
 CREATE TABLE payment_reconciliation_progress (

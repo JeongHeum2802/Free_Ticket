@@ -23,4 +23,10 @@ public class TicketPriceHistory {
 
     @Column(name = "changed_at", nullable = false)
     private LocalDateTime changedAt;
+
+    public TicketPriceHistory(Ticket ticket, int price, LocalDateTime changedAt) {
+        this.ticket = ticket;
+        this.price = price;
+        this.changedAt = changedAt;
+    }
 }

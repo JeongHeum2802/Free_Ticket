@@ -3,7 +3,6 @@ package wamddu.backend.user.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -12,10 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "refresh_tokens", indexes = {
-        @Index(name = "idx_refresh_token_user", columnList = "user_id"),
-        @Index(name = "idx_refresh_token_expiry", columnList = "expires_at")
-})
+@Table(name = "refresh_tokens")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor

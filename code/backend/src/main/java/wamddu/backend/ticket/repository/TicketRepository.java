@@ -26,6 +26,18 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             "(SELECT D.id FROM EventDirector D WHERE D.event = E AND D.user.id = :userId)")
     Optional<Ticket> findManagedTicket(@Param("ticketId") Long ticketId, @Param("userId") Long userId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT T FROM Ticket T JOIN FETCH T.event E WHERE T.id = :ticketId AND EXISTS " +
+            "(SELECT D.id FROM EventDirector D WHERE D.event = E AND D.user.id = :userId)")
+    Optional<Ticket> findManagedTicketForUpdate(@Param("ticketId") Long ticketId, @Param("userId") Long userId);
+
+    @Query("SELECT T.id FROM Ticket T WHERE T.automaticPricingEnabled = true " +
+            "AND T.bookingEndtime > :now AND T.sold_ticket < T.total_ticket " +
+            "AND T.salesStartAt <= :cutoff " +
+            "AND (T.lastPriceEvaluatedAt IS NULL OR T.lastPriceEvaluatedAt <= :cutoff)")
+    List<Long> findPriceAdjustmentCandidates(@Param("now") java.time.LocalDateTime now,
+                                             @Param("cutoff") java.time.LocalDateTime cutoff);
+
     @Query("SELECT T FROM Ticket T WHERE T.event.id = :id " +
             "ORDER BY T.start_time ASC, T.price DESC")
     List<Ticket> getAllEventTickets(Long id);

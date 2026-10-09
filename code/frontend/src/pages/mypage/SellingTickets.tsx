@@ -71,13 +71,16 @@ function SellingTicketList() {
         </button>)}
       </div>}
     {!loading && !error && tickets.length > 0 && <div id="ticket-price-history" className="mt-8">
-      {selected ? <PriceHistoryPanel key={selected.id} ticket={selected} />
+      {selected ? <PriceHistoryPanel key={selected.id} ticket={selected} onSaved={(updated) => {
+        setTickets((current) => current.map((item) => item.id === updated.id ? updated : item));
+        setSelected((current) => current?.id === updated.id ? updated : current);
+      }} />
         : <p className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-12 text-center text-sm text-gray-500">위에서 티켓을 선택하면 가격 이력 차트가 표시됩니다.</p>}
     </div>}
   </section>;
 }
 
-function PriceHistoryPanel({ ticket }: { ticket: SellingTicket }) {
+function PriceHistoryPanel({ ticket, onSaved }: { ticket: SellingTicket; onSaved: (ticket: SellingTicket) => void }) {
   const [data, setData] = useState<PriceHistory | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -109,7 +112,11 @@ function PriceHistoryPanel({ ticket }: { ticket: SellingTicket }) {
       : <>
         <dl className="my-6 grid gap-3 sm:grid-cols-3">{summary.map(([label, value]) => <div key={label} className="rounded-xl bg-gray-50 p-4"><dt className="text-xs text-gray-500">{label}</dt><dd className="mt-2 text-lg font-bold">{value == null ? "기록 없음" : `${value.toLocaleString()}원`}</dd></div>)}</dl>
         <TicketPriceChart history={data.history} />
-        <TicketPriceSettings currentPrice={data.ticket.price} />
+        <TicketPriceSettings ticket={data.ticket} onSaved={(updated) => {
+          setData((current) => current ? { ...current, ticket: updated } : current);
+          onSaved(updated);
+          setAttempt((current) => current + 1);
+        }} />
         {data.history.length > 0 && <details className="mt-5 rounded-lg border border-gray-200 p-4">
           <summary className="cursor-pointer text-sm font-semibold">전체 변경 내역 ({data.history.length}건)</summary>
           <div className="mt-4 max-h-72 overflow-auto"><table className="w-full text-left text-sm">

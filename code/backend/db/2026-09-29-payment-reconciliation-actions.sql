@@ -19,6 +19,5 @@ CREATE TABLE payment_reconciliation_action (
     sold_before INT NULL,
     sold_after INT NULL,
     PRIMARY KEY (id),
-    KEY idx_payment_recon_action_issue (issue_id, id),
     CONSTRAINT fk_payment_recon_action_issue FOREIGN KEY (issue_id) REFERENCES payment_reconciliation_issue (id)
 );

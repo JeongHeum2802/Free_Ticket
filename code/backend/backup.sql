@@ -21,9 +21,7 @@ CREATE TABLE refresh_tokens (
     user_id BIGINT NOT NULL,
     token_hash VARCHAR(64) NOT NULL,
     expires_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (id),
-    KEY idx_refresh_token_user (user_id),
-    KEY idx_refresh_token_expiry (expires_at)
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE `events` (
@@ -56,6 +54,11 @@ CREATE TABLE `event_directors` (
   DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `tickets` (
+                           `initial_price` int DEFAULT NULL,
+                           `min_price` int DEFAULT NULL,
+                           `sales_start_at` datetime(6) DEFAULT NULL,
+                           `last_price_evaluated_at` datetime(6) DEFAULT NULL,
+                           `automatic_pricing_enabled` boolean NOT NULL DEFAULT FALSE,
                            `price` int DEFAULT NULL,
                            `sold_ticket` int DEFAULT NULL,
                            `total_ticket` int DEFAULT NULL,
@@ -123,8 +126,7 @@ CREATE TABLE payment_reconciliation_issue (
     resolved_at_utc DATETIME(6) NULL,
     resolved_by BIGINT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_payment_recon_transaction (merchant_id, transaction_key),
-    KEY idx_payment_recon_detected_at (detected_at_utc)
+    UNIQUE KEY uk_payment_recon_transaction (merchant_id, transaction_key)
 );
 
 CREATE TABLE payment_reconciliation_action (
@@ -144,7 +146,6 @@ CREATE TABLE payment_reconciliation_action (
     sold_before INT NULL,
     sold_after INT NULL,
     PRIMARY KEY (id),
-    KEY idx_payment_recon_action_issue (issue_id, id),
     CONSTRAINT fk_payment_recon_action_issue FOREIGN KEY (issue_id) REFERENCES payment_reconciliation_issue (id)
 );
 

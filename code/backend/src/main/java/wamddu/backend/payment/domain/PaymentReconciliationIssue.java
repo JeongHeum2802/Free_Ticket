@@ -6,8 +6,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "payment_reconciliation_issue", uniqueConstraints =
-        @UniqueConstraint(name = "uk_payment_recon_transaction", columnNames = {"merchant_id", "transaction_key"}),
-        indexes = @Index(name = "idx_payment_recon_detected_at", columnList = "detected_at_utc"))
+        @UniqueConstraint(name = "uk_payment_recon_transaction", columnNames = {"merchant_id", "transaction_key"}))
 @Getter
 @Builder
 @NoArgsConstructor

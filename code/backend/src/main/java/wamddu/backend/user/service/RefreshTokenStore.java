@@ -19,7 +19,7 @@ public class RefreshTokenStore {
     private final RefreshTokenRepository repository;
 
     public void save(String familyId, Long userId, String token, Instant expiresAt) {
-        // ponytail: cleanup on login; batch expiry cleanup if the indexed delete becomes too large.
+        // shortcut: cleanup on login; batch expiry cleanup if the delete becomes too slow.
         repository.deleteExpired(Instant.now());
         repository.save(new RefreshToken(familyId, userId, hash(token), expiresAt));
     }

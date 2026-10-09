@@ -1,6 +1,7 @@
 package wamddu.backend.ticket.controller;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -8,6 +9,8 @@ import wamddu.backend.global.response.ApiResponse;
 import wamddu.backend.ticket.dto.response.SellingTicketResponse;
 import wamddu.backend.ticket.dto.response.TicketPriceHistoryResponse;
 import wamddu.backend.ticket.service.SellingTicketService;
+import wamddu.backend.ticket.service.TicketPricingService;
+import wamddu.backend.ticket.dto.request.TicketPriceSettingsRequest;
 import java.util.List;
 
 @RestController
@@ -15,6 +18,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SellingTicketController {
     private final SellingTicketService service;
+    private final TicketPricingService pricingService;
+
+    @PutMapping("/{ticketId}/price-settings")
+    public ApiResponse<SellingTicketResponse> configurePrice(@AuthenticationPrincipal UserDetails principal,
+            @PathVariable Long ticketId, @Valid @RequestBody TicketPriceSettingsRequest request) {
+        return ApiResponse.success("가격 설정을 저장했습니다.",
+                pricingService.configure(Long.parseLong(principal.getUsername()), ticketId, request));
+    }
 
     @GetMapping("/me/selling")
     public ApiResponse<List<SellingTicketResponse>> getMyTickets(@AuthenticationPrincipal UserDetails principal) {

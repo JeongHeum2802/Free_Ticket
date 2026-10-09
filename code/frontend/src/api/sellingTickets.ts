@@ -11,6 +11,18 @@ export type SellingTicket = {
   soldTicket: number | null;
   startTime: string | null;
   bookingEndtime: string | null;
+  initialPrice: number | null;
+  minPrice: number | null;
+  salesStartAt: string | null;
+  automaticPricingEnabled: boolean;
+  lastPriceEvaluatedAt: string | null;
+};
+
+export type TicketPriceSettings = {
+  initialPrice: number | null;
+  minPrice: number | null;
+  automaticPricingEnabled: boolean;
+  price: number | null;
 };
 
 export type PricePoint = { id: number; price: number; changedAt: string };
@@ -23,5 +35,10 @@ export async function getSellingTickets(signal?: AbortSignal) {
 
 export async function getTicketPriceHistory(ticketId: number, signal?: AbortSignal) {
   const response = await api.get<ApiDataResponse<PriceHistory>>(`/tickets/${ticketId}/price-history`, { signal });
+  return response.data.data;
+}
+
+export async function updateTicketPriceSettings(ticketId: number, settings: TicketPriceSettings, signal?: AbortSignal) {
+  const response = await api.put<ApiDataResponse<SellingTicket>>(`/tickets/${ticketId}/price-settings`, settings, { signal });
   return response.data.data;
 }

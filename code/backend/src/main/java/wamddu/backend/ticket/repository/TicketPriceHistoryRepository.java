@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface TicketPriceHistoryRepository extends JpaRepository<TicketPriceHistory, Long> {
     List<TicketPriceHistory> findAllByTicketIdOrderByChangedAtAscIdAsc(Long ticketId);
+    boolean existsByTicketId(Long ticketId);
 }
