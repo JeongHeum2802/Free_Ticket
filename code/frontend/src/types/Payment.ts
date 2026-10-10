@@ -32,7 +32,7 @@ export type ReservationHistory = {
   paidAt: string;
   paymentMethod: string | null;
   receiptUrl: string | null;
-  status: "PAID";
+  status: "PAID" | "CANCELING";
 };
 
 export type ApiDataResponse<T> = {

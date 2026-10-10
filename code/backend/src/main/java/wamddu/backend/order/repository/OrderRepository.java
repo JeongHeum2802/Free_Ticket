@@ -34,6 +34,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O " +
             "WHERE O.ticket_id = :ticketId AND O.status IN :statuses " +
+            "AND (O.status <> wamddu.backend.order.domain.OrderStatus.CANCELING " +
+            "OR NOT EXISTS (SELECT P.id FROM Payment P WHERE P.order = O)) " +
             "AND (O.expiresAt > :now OR O.status IN " +
             "(wamddu.backend.order.domain.OrderStatus.CONFIRMING, wamddu.backend.order.domain.OrderStatus.CANCELING))")
     Long sumActiveQuantity(
@@ -45,7 +47,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findAllByUserIdAndStatusOrderByPaidAtDesc(Long userId, OrderStatus status);
 
     @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O WHERE O.ticket_id = :ticketId " +
-            "AND O.status = wamddu.backend.order.domain.OrderStatus.PAID " +
+            "AND (O.status = wamddu.backend.order.domain.OrderStatus.PAID OR " +
+            "(O.status = wamddu.backend.order.domain.OrderStatus.CANCELING " +
+            "AND EXISTS (SELECT P.id FROM Payment P WHERE P.order = O AND P.status = 'DONE'))) " +
             "AND O.paidAt >= :from AND O.paidAt < :to")
     Long sumPaidQuantity(@Param("ticketId") Long ticketId,
                          @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);

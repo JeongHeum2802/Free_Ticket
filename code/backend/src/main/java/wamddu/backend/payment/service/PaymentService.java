@@ -22,6 +22,7 @@ import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.TicketRepository;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -38,6 +39,133 @@ public class PaymentService {
 
     @Value("${payment.recovery.max-attempts:20}")
     private int recoveryMaxAttempts = 20;
+
+    public PaymentResponse cancelReservation(Long userId, String orderId) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        RecoveryAttempt attempt = transaction.execute(status -> {
+            Order order = orderRepository.findByOrderIdAndUserIdForUpdate(orderId, userId)
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."));
+            if (order.getStatus() == OrderStatus.CANCELING) {
+                throw cancellationPending(null);
+            }
+            if (order.getStatus() != OrderStatus.PAID && order.getStatus() != OrderStatus.CANCELED) {
+                throw new ApiException(HttpStatus.CONFLICT, "INVALID_ORDER_STATUS", "취소할 수 있는 예매가 아닙니다.");
+            }
+            Payment payment = paymentRepository.findByOrderOrderIdForUpdate(orderId).orElse(null);
+            ConfirmPaymentRequest request = cancellationRequest(order, payment);
+            if (order.getStatus() == OrderStatus.CANCELED) {
+                return new RecoveryAttempt(userId, request, 0, null);
+            }
+            Ticket ticket = ticketRepository.findByIdForUpdate(order.getTicket_id()).orElse(null);
+            validateCancellationInventory(order, ticket);
+            if (ticket.getStart_time() != null && !LocalDateTime.now().isBefore(ticket.getStart_time())) {
+                throw new ApiException(HttpStatus.CONFLICT, "CANCELLATION_CLOSED", "이미 시작된 공연은 예매를 취소할 수 없습니다.");
+            }
+            if ("가상계좌".equals(payment.getMethod())) {
+                throw new ApiException(HttpStatus.CONFLICT, "UNSUPPORTED_REFUND_METHOD", "가상계좌 환불은 환불 계좌 확인이 필요합니다. 주문번호로 문의해 주세요.");
+            }
+            // 취소 의도를 먼저 커밋하고, 재고는 전액 취소가 확인될 때 복구한다.
+            order.setStatus(OrderStatus.CANCELING);
+            order.setNextRecoveryAt(nextRecoveryAt());
+            order.setRecoveryAttempts(0);
+            order.setRecoveryReviewRequired(false);
+            return new RecoveryAttempt(userId, request, 0, "reservation-cancel:" + order.getIdempotencyKey());
+        });
+        if (attempt.cancellationKey() == null) {
+            return transaction.execute(status -> toResponse(paymentRepository.findByOrderOrderId(orderId).orElseThrow()));
+        }
+        try {
+            return cancelPaidReservation(attempt, transaction);
+        } catch (RuntimeException failure) {
+            log.warn("예매 취소 결과 확정 실패. 후속 확인 필요. orderId={}", orderId, failure);
+            throw cancellationPending(failure);
+        }
+    }
+
+    private PaymentResponse cancelPaidReservation(RecoveryAttempt attempt, TransactionTemplate transaction) {
+        ConfirmPaymentRequest request = attempt.request();
+        var pg = tossPaymentsClient.getPayment(request.paymentKey());
+        validatePaymentIdentity(request, pg);
+        if ("DONE".equals(pg.status())) {
+            if (!request.amount().equals(pg.balanceAmount()) || !"KRW".equals(pg.currency())) {
+                throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_STATE_MISMATCH", "전액 취소 가능한 결제인지 확인해야 합니다.");
+            }
+            pg = tossPaymentsClient.cancel(request.paymentKey(), "구매자 예매 취소", attempt.cancellationKey());
+            validatePaymentIdentity(request, pg);
+        }
+        if (!completedFullCancellation(pg)) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "INVALID_TOSS_CANCEL_RESPONSE", "완료된 전액 취소를 확인할 수 없습니다.");
+        }
+        return transaction.execute(status -> {
+            Order order = orderRepository.findByOrderIdAndUserIdForUpdate(request.orderId(), attempt.userId())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."));
+            Payment payment = paymentRepository.findByOrderOrderIdForUpdate(request.orderId()).orElse(null);
+            if (!request.equals(cancellationRequest(order, payment))) {
+                throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_STATE_MISMATCH", "저장된 결제 정보가 취소 요청과 일치하지 않습니다.");
+            }
+            if (order.getStatus() == OrderStatus.CANCELED) {
+                return toResponse(payment);
+            }
+            if (order.getStatus() != OrderStatus.CANCELING) {
+                throw new ApiException(HttpStatus.CONFLICT, "INVALID_ORDER_STATUS", "취소 처리 중인 예매가 아닙니다.");
+            }
+            Ticket ticket = ticketRepository.findByIdForUpdate(order.getTicket_id()).orElse(null);
+            validateCancellationInventory(order, ticket);
+            ticket.setSold_ticket(ticket.getSold_ticket() - order.getQuantity());
+            order.setStatus(OrderStatus.CANCELED);
+            order.setNextRecoveryAt(null);
+            order.setRecoveryReviewRequired(false);
+            payment.setStatus("CANCELED");
+            return toResponse(payment);
+        });
+    }
+
+    private ConfirmPaymentRequest cancellationRequest(Order order, Payment payment) {
+        String expectedStatus = order.getStatus() == OrderStatus.CANCELED ? "CANCELED" : "DONE";
+        if (payment == null || order.getPaymentKey() == null || order.getPaymentKey().isBlank()
+                || !order.getPaymentKey().equals(payment.getPaymentKey())
+                || order.getTotalAmount() == null || order.getTotalAmount() <= 0
+                || !order.getTotalAmount().equals(payment.getAmount()) || !expectedStatus.equals(payment.getStatus())
+                || order.getQuantity() == null || order.getQuantity() <= 0
+                || order.getUnitPrice() == null || order.getUnitPrice() <= 0
+                || (long) order.getQuantity() * order.getUnitPrice() != order.getTotalAmount()
+                || order.getIdempotencyKey() == null || order.getIdempotencyKey().isBlank()) {
+            throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_STATE_MISMATCH", "주문과 결제 정보를 확인해야 합니다.");
+        }
+        return new ConfirmPaymentRequest(order.getPaymentKey(), order.getOrderId(), order.getTotalAmount());
+    }
+
+    private void validateCancellationInventory(Order order, Ticket ticket) {
+        if (ticket == null || ticket.getEvent() == null || !Objects.equals(ticket.getEvent().getId(), order.getEvent_id())
+                || ticket.getSold_ticket() == null || ticket.getTotal_ticket() == null
+                || ticket.getSold_ticket() < order.getQuantity() || ticket.getSold_ticket() > ticket.getTotal_ticket()) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TICKET_DATA", "티켓과 판매 수량을 확인해야 합니다.");
+        }
+    }
+
+    private boolean completedFullCancellation(TossPaymentsClient.TossPaymentResponse pg) {
+        if (!"CANCELED".equals(pg.status()) || !"KRW".equals(pg.currency())
+                || pg.balanceAmount() == null || pg.balanceAmount() != 0 || pg.cancels() == null || pg.cancels().isEmpty()) {
+            return false;
+        }
+        long total = 0;
+        for (var cancel : pg.cancels()) {
+            if (cancel == null || cancel.cancelAmount() == null || cancel.cancelAmount() <= 0 || !"DONE".equals(cancel.cancelStatus())) {
+                return false;
+            }
+            try { total = Math.addExact(total, cancel.cancelAmount()); }
+            catch (ArithmeticException overflow) { return false; }
+        }
+        return Objects.equals(total, pg.totalAmount());
+    }
+
+    private ApiException cancellationPending(RuntimeException cause) {
+        ApiException pending = new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "RESERVATION_CANCELLATION_PENDING",
+                "예매 취소 결과를 확인 중입니다. 목록을 새로고침해 확인하고, 처리가 계속 지연되면 주문번호로 문의해 주세요.");
+        if (cause != null) pending.initCause(cause);
+        return pending;
+    }
 
     public PaymentResponse confirm(Long userId, ConfirmPaymentRequest request) {
         log.debug("[SQL CHECK] POST /api/payments/confirm START");
@@ -247,6 +375,10 @@ public class PaymentService {
                 if (attempt == null) {
                     continue;
                 }
+                if (attempt.cancellationKey() != null) {
+                    cancelPaidReservation(attempt, transaction);
+                    continue;
+                }
                 var toss = tossPaymentsClient.getPayment(attempt.request().paymentKey());
                 validatePaymentIdentity(attempt.request(), toss);
                 final RecoveryAttempt claimed = attempt;
@@ -283,19 +415,36 @@ public class PaymentService {
                 || (order.getNextRecoveryAt() != null && order.getNextRecoveryAt().isAfter(LocalDateTime.now()))) {
             return null;
         }
+        var payment = paymentRepository.findByOrderOrderId(order.getOrderId());
+        boolean paidCancellation = order.getStatus() == OrderStatus.CANCELING && payment.isPresent();
         if (order.getPaymentKey() == null || order.getPaymentKey().isBlank()
                 || order.getRecoveryAttempts() >= recoveryMaxAttempts
-                || paymentRepository.findByOrderOrderId(order.getOrderId()).isPresent()) {
+                || (payment.isPresent() && !paidCancellation)) {
             order.setRecoveryReviewRequired(true);
             order.setNextRecoveryAt(null);
             log.error("결제 수동 확인 필요. orderId={}", order.getOrderId());
             return null;
         }
+        ConfirmPaymentRequest paidCancellationRequest = null;
+        if (paidCancellation) {
+            try {
+                paidCancellationRequest = cancellationRequest(order, payment.orElseThrow());
+            } catch (ApiException invalidPayment) {
+                order.setRecoveryReviewRequired(true);
+                order.setNextRecoveryAt(null);
+                log.error("예매 취소 결제 정보 불일치. 수동 확인 필요. orderId={}", order.getOrderId());
+                return null;
+            }
+        }
         order.setRecoveryAttempts(order.getRecoveryAttempts() + 1);
         // 외부 호출 전에 커밋하여 다른 서버가 같은 주문을 즉시 가져가지 못하게 한다.
         order.setNextRecoveryAt(nextRecoveryAt());
+        if (paidCancellation) {
+            return new RecoveryAttempt(order.getUser().getId(), paidCancellationRequest,
+                    order.getRecoveryAttempts(), "reservation-cancel:" + order.getIdempotencyKey());
+        }
         return new RecoveryAttempt(order.getUser().getId(), new ConfirmPaymentRequest(
-                order.getPaymentKey(), order.getOrderId(), order.getTotalAmount()), order.getRecoveryAttempts());
+                order.getPaymentKey(), order.getOrderId(), order.getTotalAmount()), order.getRecoveryAttempts(), null);
     }
 
     private void recordRecoveryFailure(Long id, int attempt, TransactionTemplate transaction) {
@@ -336,7 +485,7 @@ public class PaymentService {
         return LocalDateTime.now().plusNanos(recoveryRetryDelayMs * 1_000_000);
     }
 
-    private record RecoveryAttempt(Long userId, ConfirmPaymentRequest request, int number) {}
+    private record RecoveryAttempt(Long userId, ConfirmPaymentRequest request, int number, String cancellationKey) {}
 
     private PaymentResponse matchingPaidResponse(Order order, ConfirmPaymentRequest request, Payment payment) {
         if (payment == null || !request.paymentKey().equals(payment.getPaymentKey())

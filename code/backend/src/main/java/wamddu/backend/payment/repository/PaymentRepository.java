@@ -7,6 +7,7 @@ import wamddu.backend.order.domain.OrderStatus;
 import wamddu.backend.payment.domain.Payment;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
@@ -21,9 +22,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     boolean existsByPaymentKey(String paymentKey);
 
     @Query("SELECT P FROM Payment P JOIN FETCH P.order O " +
-            "WHERE O.user.id = :userId AND O.status = :status ORDER BY O.paidAt DESC")
-    List<Payment> findAllPaidByUserId(
+            "WHERE O.user.id = :userId AND O.status IN :statuses ORDER BY O.paidAt DESC")
+    List<Payment> findAllReservationsByUserId(
             @Param("userId") Long userId,
-            @Param("status") OrderStatus status
+            @Param("statuses") Collection<OrderStatus> statuses
     );
 }

@@ -109,7 +109,8 @@ public class OrderService {
     public ReservationListResponse getMyReservations(Long userId) {
         log.debug("[SQL CHECK] GET /api/orders/me/reservations START");
         try {
-            List<Payment> payments = paymentRepository.findAllPaidByUserId(userId, OrderStatus.PAID);
+            List<Payment> payments = paymentRepository.findAllReservationsByUserId(userId,
+                    List.of(OrderStatus.PAID, OrderStatus.CANCELING));
             List<Long> ticketIds = payments.stream()
                     .map(payment -> payment.getOrder().getTicket_id())
                     .filter(Objects::nonNull)

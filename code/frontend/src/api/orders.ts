@@ -2,6 +2,7 @@ import { api } from "./axios";
 import type {
   ApiDataResponse,
   CheckoutOrder,
+  PaymentResult,
   ReservationHistory,
 } from "../types/Payment";
 
@@ -23,6 +24,15 @@ export async function getCheckoutOrder(orderId: string) {
 export async function getMyReservations() {
   const response = await api.get<
     ApiDataResponse<{ reservations: ReservationHistory[] }>
-  >("/orders/me/reservations");
+  >("/orders/me/reservations", { timeout: 10_000 });
   return response.data.data.reservations;
+}
+
+export async function cancelReservation(orderId: string) {
+  const response = await api.post<ApiDataResponse<PaymentResult>>(
+    `/payments/${encodeURIComponent(orderId)}/cancel`,
+    undefined,
+    { timeout: 90_000 },
+  );
+  return response.data.data;
 }

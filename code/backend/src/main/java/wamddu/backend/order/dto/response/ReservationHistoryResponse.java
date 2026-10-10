@@ -43,7 +43,7 @@ public record ReservationHistoryResponse(
                 : "기본 티켓";
         LocalDateTime performanceAt = (ticket != null && ticket.getStart_time() != null)
                 ? ticket.getStart_time()
-                : order.getOrderDate();
+                : null;
         LocalDateTime paidAt = (order.getPaidAt() != null)
                 ? order.getPaidAt()
                 : (payment.getApprovedAt() != null ? payment.getApprovedAt() : order.getOrderDate());

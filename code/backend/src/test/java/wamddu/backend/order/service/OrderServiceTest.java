@@ -215,7 +215,7 @@ class OrderServiceTest {
         payment.setMethod("카드");
         payment.setReceiptUrl("http://example.com/receipt");
 
-        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment, payment, payment));
+        given(paymentRepository.findAllReservationsByUserId(1L, List.of(OrderStatus.PAID, OrderStatus.CANCELING))).willReturn(List.of(payment, payment, payment));
         given(ticketRepository.findAllWithEventByIdIn(List.of(1L))).willReturn(List.of(ticket));
 
         // when
@@ -232,7 +232,7 @@ class OrderServiceTest {
 
     @Test
     void getMyReservations_EmptySkipsTicketQuery() {
-        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of());
+        given(paymentRepository.findAllReservationsByUserId(1L, List.of(OrderStatus.PAID, OrderStatus.CANCELING))).willReturn(List.of());
         assertThat(orderService.getMyReservations(1L).reservations()).isEmpty();
         verifyNoInteractions(ticketRepository, orderRepository);
     }
@@ -243,11 +243,12 @@ class OrderServiceTest {
         order.setStatus(OrderStatus.PAID);
         Payment payment = new Payment();
         payment.setOrder(order);
-        given(paymentRepository.findAllPaidByUserId(1L, OrderStatus.PAID)).willReturn(List.of(payment));
+        given(paymentRepository.findAllReservationsByUserId(1L, List.of(OrderStatus.PAID, OrderStatus.CANCELING))).willReturn(List.of(payment));
 
         assertThat(orderService.getMyReservations(1L).reservations())
                 .singleElement().extracting(reservation -> reservation.eventName())
                 .isEqualTo("공연 정보 없음");
+        assertThat(orderService.getMyReservations(1L).reservations().get(0).performanceAt()).isNull();
         verifyNoInteractions(ticketRepository, orderRepository);
     }
 }

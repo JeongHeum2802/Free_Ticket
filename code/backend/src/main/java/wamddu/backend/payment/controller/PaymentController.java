@@ -16,6 +16,15 @@ import wamddu.backend.payment.service.PaymentService;
 public class PaymentController {
     private final PaymentService paymentService;
 
+    @PostMapping("/{orderId}/cancel")
+    public ApiResponse<PaymentResponse> cancelReservation(
+            @PathVariable String orderId,
+            @AuthenticationPrincipal UserDetails principal
+    ) {
+        return ApiResponse.success("예매가 취소되었습니다.",
+                paymentService.cancelReservation(Long.parseLong(principal.getUsername()), orderId));
+    }
+
     @PostMapping("/confirm")
     public ApiResponse<PaymentResponse> confirm(
             @Valid @RequestBody ConfirmPaymentRequest request,

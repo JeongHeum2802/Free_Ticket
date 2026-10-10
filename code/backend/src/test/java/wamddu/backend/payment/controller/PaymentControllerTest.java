@@ -65,6 +65,25 @@ class PaymentControllerTest {
     }
 
     @Test
+    void cancelReservationUsesAuthenticatedUserAndReturnsCancellation() throws Exception {
+        given(paymentService.cancelReservation(1L, "ORD-CANCEL"))
+                .willReturn(new PaymentResponse("ORD-CANCEL", "payment-key", 20000L, "카드", "CANCELED", LocalDateTime.now(), null));
+        mockMvc.perform(post("/api/payments/ORD-CANCEL/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderId").value("ORD-CANCEL"))
+                .andExpect(jsonPath("$.data.status").value("CANCELED"));
+    }
+
+    @Test
+    void cancelReservationKeepsUncertainResultsPending() throws Exception {
+        given(paymentService.cancelReservation(1L, "ORD-CANCEL"))
+                .willThrow(new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "RESERVATION_CANCELLATION_PENDING", "취소 확인 중"));
+        mockMvc.perform(post("/api/payments/ORD-CANCEL/cancel"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("RESERVATION_CANCELLATION_PENDING"));
+    }
+
+    @Test
     @DisplayName("결제 승인 API - 성공 응답 포맷 (ApiResponse) 검증")
     void confirm_Success_ReturnsApiResponse() throws Exception {
         // given
