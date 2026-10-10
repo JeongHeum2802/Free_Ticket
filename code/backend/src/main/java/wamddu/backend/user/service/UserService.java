@@ -35,6 +35,7 @@ public class UserService {
     private final EventDirectorRepository eventDirectorRepository;
     private final JwtProvider jwtProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final EmailVerificationService emailVerificationService;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
 
@@ -49,6 +50,7 @@ public class UserService {
 
     @Transactional
     public SignupResponse signUp(SignupRequest request) {
+        request.setEmail(EmailVerificationService.normalizeEmail(request.getEmail()));
         log.debug("[SQL CHECK] POST /api/auth/signup START");
         try {
             // 이메일 중복 검사
@@ -65,6 +67,7 @@ public class UserService {
             user.setUsername(request.getUsername());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setEmail(request.getEmail());
+            user.setEmailVerifiedAt(emailVerificationService.consume(request.getEmail(), request.getEmailVerificationToken()));
             user.setPhonenumber(request.getPhonenumber());
             user.setRole(Role.USER);
             user.setStatus(UserStatus.ACTIVE);
@@ -189,11 +192,13 @@ public class UserService {
                 throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
             }
 
-            if (request.getEmail() != null) {
-                if (userRepository.existsByEmail(request.getEmail())) {
+            if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+                String email = EmailVerificationService.normalizeEmail(request.getEmail());
+                if (userRepository.existsByEmail(email)) {
                     throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "이미 사용 중인 이메일입니다.");
                 }
-                user.setEmail(request.getEmail());
+                user.setEmailVerifiedAt(emailVerificationService.consume(email, request.getEmailVerificationToken()));
+                user.setEmail(email);
             }
 
             if (request.getPhonenumber() != null) {

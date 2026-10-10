@@ -55,7 +55,7 @@ public class AdminTableService {
                     if (!table.equalsIgnoreCase(rs.getString("TABLE_NAME"))) continue;
                     String name = rs.getString("COLUMN_NAME");
                     if (name.equalsIgnoreCase("id") || "YES".equals(rs.getString("IS_AUTOINCREMENT"))) continue;
-                    if (table.equals("users") && name.equalsIgnoreCase("customer_key")) continue;
+                    if (table.equals("users") && (name.equalsIgnoreCase("customer_key") || name.equalsIgnoreCase("email_verified_at"))) continue;
                     if (table.equals("tickets") && name.equalsIgnoreCase("sold_ticket")) continue;
                     String type = switch (rs.getInt("DATA_TYPE")) {
                         case Types.TINYINT, Types.SMALLINT, Types.INTEGER, Types.BIGINT, Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.REAL, Types.DOUBLE -> "number";
@@ -94,6 +94,9 @@ public class AdminTableService {
     }
 
     private static void requireWritableField(String table, String column) {
+        if (table.equals("users") && "email_verified_at".equalsIgnoreCase(column)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ADMIN_FIELD_READ_ONLY", "이메일 인증 시각은 인증 절차로만 변경할 수 있습니다.");
+        }
         if (table.equals("tickets") && "sold_ticket".equalsIgnoreCase(column)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "ADMIN_FIELD_READ_ONLY",
                     "티켓 판매 수량은 결제 처리로만 변경할 수 있습니다.");
@@ -250,6 +253,9 @@ public class AdminTableService {
                 parameters.add(id);
                 String assignments = columns.stream().map(column -> quote(column) + " = ?")
                         .collect(java.util.stream.Collectors.joining(", "));
+                if (table.equals("users") && columns.stream().anyMatch("email"::equalsIgnoreCase)) {
+                    assignments += ", email_verified_at = NULL";
+                }
                 jdbc.update("UPDATE " + quote(table) + " SET " + assignments + " WHERE id = ?", parameters.toArray());
             }
             return read(table, page, size);

@@ -25,6 +25,9 @@ public class User {
     @Column(name = "email", unique = true, nullable = false)
     private String email;
 
+    @Column(name = "email_verified_at", columnDefinition = "datetime(6)")
+    private java.time.Instant emailVerifiedAt;
+
     @Column(name = "phonenumber")
     private String phonenumber;
 

@@ -6,6 +6,7 @@ CREATE TABLE `users` (
                          `id` bigint NOT NULL AUTO_INCREMENT,
                          `customer_key` varchar(255) DEFAULT NULL,
                          `email` varchar(255) NOT NULL,
+                         `email_verified_at` datetime(6) DEFAULT NULL,
                          `password` varchar(255) NOT NULL,
                          `phonenumber` varchar(255) DEFAULT NULL,
                          `username` varchar(255) NOT NULL,
@@ -15,6 +16,20 @@ CREATE TABLE `users` (
                          UNIQUE KEY `UK6dotkott2kjsp8vw4d0m25fb7` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2
   DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE email_verifications (
+    id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    email varchar(254) NOT NULL UNIQUE,
+    token_hash varchar(64) NOT NULL,
+    code_hash varchar(100) NOT NULL,
+    expires_at datetime(6) NOT NULL,
+    sent_at datetime(6) NOT NULL,
+    window_started_at datetime(6) NOT NULL,
+    send_count int NOT NULL,
+    failed_attempts int NOT NULL,
+    verified_at datetime(6) NULL,
+    consumed_at datetime(6) NULL
+);
 
 CREATE TABLE refresh_tokens (
     id VARCHAR(36) NOT NULL,

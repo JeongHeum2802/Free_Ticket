@@ -33,7 +33,7 @@ class SignupControllerTest {
     @Mock private PaymentService paymentService;
     private MockMvc mvc;
     private static final String VALID = """
-            {"username":"홍길동","password":"password123!","email":"user@example.com","phonenumber":"01012345678"}
+            {"username":"홍길동","password":"password123!","email":"user@example.com","phonenumber":"01012345678","emailVerificationToken":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
             """;
 
     @BeforeEach
@@ -44,19 +44,19 @@ class SignupControllerTest {
     }
 
     @Test
-    void invalidFieldsReturnAllFourMessages() throws Exception {
+    void invalidFieldsReturnAllRequiredMessages() throws Exception {
         assertAllFieldsInvalid("""
                 {"username":"홍","password":"short","email":"invalid","phonenumber":"010"}
                 """);
     }
 
     @Test
-    void missingFieldsReturnAllFourMessages() throws Exception {
+    void missingFieldsReturnAllRequiredMessages() throws Exception {
         assertAllFieldsInvalid("{}");
     }
 
     @Test
-    void explicitNullFieldsReturnAllFourMessages() throws Exception {
+    void explicitNullFieldsReturnAllRequiredMessages() throws Exception {
         assertAllFieldsInvalid("""
                 {"username":null,"password":null,"email":null,"phonenumber":null}
                 """);
@@ -67,7 +67,7 @@ class SignupControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").value("입력값을 확인해 주세요."))
-                .andExpect(jsonPath("$.errors", aMapWithSize(4)))
+                .andExpect(jsonPath("$.errors", aMapWithSize(5)))
                 .andExpect(jsonPath("$.errors.username").value("사용자 이름은 2자 이상이어야 합니다."))
                 .andExpect(jsonPath("$.errors.password").value("비밀번호는 8자 이상이어야 합니다."))
                 .andExpect(jsonPath("$.errors.email").value("올바른 이메일 형식이 아닙니다."))

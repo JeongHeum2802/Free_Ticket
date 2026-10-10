@@ -6,7 +6,7 @@ export function isAdminTableReadOnly(table: string) {
 
 export function isAdminColumnReadOnly(table: string, column: string) {
   return isAdminTableReadOnly(table) || column === "id"
-    || (table === "users" && column === "customer_key")
+    || (table === "users" && (column === "customer_key" || column === "email_verified_at"))
     || (table === "tickets" && column === "sold_ticket");
 }
 

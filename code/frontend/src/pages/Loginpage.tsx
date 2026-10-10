@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { signupApi } from "../api/auth";
+import EmailVerification from "../components/EmailVerification";
 import { PRIVACY_CONSENT, SERVICE_TERMS } from '../constants/termsContent';
 
 import type { SignupRequest } from '../types/Auth';
@@ -21,6 +22,7 @@ export default function Loginpage() {
 
   const [signUpInputUsername, setSignUpInputUsername] = useState<string>("");
   const [signUpInputEmail, setSignUpInputEmail] = useState<string>("");
+  const [emailVerificationToken, setEmailVerificationToken] = useState("");
   const [signUpInputPassword, setSignUpInputPassword] = useState<string>("");
   const [signUpInputPasswordDetector, setSignUpInputPasswordDetector] = useState<string>("");
   const [signUpInputPhonenumber, setSignUpInputPhonenumber] = useState<string>("");
@@ -72,6 +74,7 @@ export default function Loginpage() {
 
   const handleChangeSignupEmailInput = (value: string): void => {
     setSignUpInputEmail(value);
+    setEmailVerificationToken("");
   }
 
   const handleChangeSignupPasswordInput = (value: string): void => {
@@ -121,16 +124,24 @@ export default function Loginpage() {
       return;
     }
 
+    if (!emailVerificationToken) {
+      setErrorMessage("이메일 인증을 완료해 주세요.");
+      return;
+    }
+
     try {
       const data: SignupRequest = {
         username: signUpInputUsername,
         password: signUpInputPassword,
         email: signUpInputEmail,
         phonenumber: signUpInputPhonenumber,
+        emailVerificationToken,
       }
       const response = await signupApi(data);
 
       alert(response.message);
+      setEmailVerificationToken("");
+      setSignUpInputEmail("");
       setIsLogin(true);
       return;
     } catch (error) {
@@ -385,6 +396,8 @@ export default function Loginpage() {
               placeholder="이메일 (예: user@example.com)"
               className="h-12 w-full border border-gray-300 px-4 text-sm outline-none placeholder:text-gray-400 focus:border-[#1e88ff]"
             />
+
+            <EmailVerification key={signUpInputEmail} email={signUpInputEmail} onVerified={setEmailVerificationToken} />
 
             <input
               type="password"

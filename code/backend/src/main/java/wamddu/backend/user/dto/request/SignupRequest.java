@@ -20,9 +20,13 @@ public class SignupRequest {
     @Size(min = 8, message = "비밀번호는 8자 이상이어야 합니다.")
     private String password;
     @NotNull(message = "올바른 이메일 형식이 아닙니다.")
+    @Size(max = 254, message = "올바른 이메일 형식이 아닙니다.")
     @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$", message = "올바른 이메일 형식이 아닙니다.")
     private String email;
     @NotNull(message = "올바른 전화번호 형식이 아닙니다.")
     @Size(min = 11, max = 11, message = "올바른 전화번호 형식이 아닙니다.")
     private String phonenumber;
+    @jakarta.validation.constraints.NotBlank(message = "이메일 인증을 완료해 주세요.")
+    @Size(min = 43, max = 43, message = "이메일 인증을 다시 진행해 주세요.")
+    private String emailVerificationToken;
 }

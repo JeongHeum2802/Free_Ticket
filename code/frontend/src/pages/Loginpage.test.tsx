@@ -4,6 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import Loginpage from "./Loginpage";
+import { sendEmailVerification, verifyEmail } from "../api/emailVerification";
+
+vi.mock("../api/emailVerification", () => ({ sendEmailVerification: vi.fn(), verifyEmail: vi.fn() }));
 
 const { signupApiMock, loginMock } = vi.hoisted(() => ({
   signupApiMock: vi.fn(),
@@ -91,7 +94,7 @@ describe("Loginpage 약관 동의", () => {
     expect(signupApiMock).not.toHaveBeenCalled();
   });
 
-  test("한 항목만 동의하면 가입을 막고 두 항목 모두 동의하면 가입을 요청한다", async () => {
+  test("약관과 이메일 인증을 모두 완료해야 가입을 요청한다", async () => {
     signupApiMock.mockResolvedValue({ message: "회원가입 성공" });
     vi.spyOn(window, "alert").mockImplementation(() => undefined);
 
@@ -128,7 +131,19 @@ describe("Loginpage 약관 동의", () => {
     fireEvent.click(screen.getByLabelText("프리티켓 서비스 이용약관 동의"));
     fireEvent.click(screen.getByRole("button", { name: "가입하기" }));
 
+    expect(screen.getByText("이메일 인증을 완료해 주세요.")).toBeTruthy();
+    expect(signupApiMock).not.toHaveBeenCalled();
+    vi.mocked(sendEmailVerification).mockResolvedValue({ verificationToken: "proof", expiresIn: 300, message: "sent" });
+    vi.mocked(verifyEmail).mockResolvedValue({ message: "verified" });
+    fireEvent.change(screen.getByPlaceholderText("이메일 (예: user@example.com)"), { target: { value: "user@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "인증번호 보내기" }));
+    fireEvent.change(await screen.findByLabelText("이메일 인증번호"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "인증 확인" }));
+    await screen.findByText("verified");
+    fireEvent.click(screen.getByRole("button", { name: "가입하기" }));
+
     await waitFor(() => expect(signupApiMock).toHaveBeenCalledTimes(1));
+    expect(signupApiMock).toHaveBeenCalledWith(expect.objectContaining({ email: "user@example.com", emailVerificationToken: "proof" }));
   });
 
   test("Escape 키로 약관 모달을 닫는다", () => {

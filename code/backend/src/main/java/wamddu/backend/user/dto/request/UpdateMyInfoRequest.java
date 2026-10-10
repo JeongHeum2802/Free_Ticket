@@ -11,6 +11,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UpdateMyInfoRequest {
     private String username;
+    @jakarta.validation.constraints.Email
+    @jakarta.validation.constraints.Size(min = 3, max = 254)
     private String email;
     private String phonenumber;
+    @jakarta.validation.constraints.Size(max = 43)
+    private String emailVerificationToken;
 }

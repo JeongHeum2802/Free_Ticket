@@ -61,7 +61,7 @@ public class UserController {
 
     @PostMapping("/api/users/me")
     public ResponseEntity<UpdateMyInfoResponse> updateMyInfo(
-            @RequestBody UpdateMyInfoRequest request,
+            @Valid @RequestBody UpdateMyInfoRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.updateMyInfo(request, userDetails));
     }

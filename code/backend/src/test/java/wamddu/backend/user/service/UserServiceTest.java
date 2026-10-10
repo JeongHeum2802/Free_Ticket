@@ -47,6 +47,8 @@ class UserServiceTest {
 
     @Mock
     private RefreshTokenStore refreshTokenStore;
+    @Mock
+    private EmailVerificationService emailVerificationService;
 
     @InjectMocks
     private UserService userService;
@@ -89,7 +91,7 @@ class UserServiceTest {
     @DisplayName("회원가입 성공 테스트")
     void signUp_Success() {
         // given
-        SignupRequest dto = new SignupRequest("홍길동", "password123!", "user@example.com", "01012345678");
+        SignupRequest dto = new SignupRequest("홍길동", "password123!", "user@example.com", "01012345678", "a".repeat(43));
 
         given(userRepository.existsByEmail("user@example.com")).willReturn(false);
         given(userRepository.existsByPhonenumber("01012345678")).willReturn(false);
@@ -109,7 +111,7 @@ class UserServiceTest {
     @DisplayName("회원가입 실패 - 이메일 중복")
     void signUp_EmailExists_ThrowsApiException() {
         // given
-        SignupRequest dto = new SignupRequest("홍길동", "password123!", "user@example.com", "01012345678");
+        SignupRequest dto = new SignupRequest("홍길동", "password123!", "user@example.com", "01012345678", "a".repeat(43));
 
         given(userRepository.existsByEmail("user@example.com")).willReturn(true);
 
@@ -217,7 +219,7 @@ class UserServiceTest {
                 .authorities("ROLE_USER")
                 .build();
 
-        UpdateMyInfoRequest request = new UpdateMyInfoRequest("김철수", null, null);
+        UpdateMyInfoRequest request = new UpdateMyInfoRequest("김철수", null, null, null);
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willReturn(user);

@@ -2,6 +2,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import EmailVerification from "../../components/EmailVerification";
 
 import { updateMyInfoApi } from "../../api/auth";
 import type { UpdateMyInfoRequest } from "../../types/Auth";
@@ -10,6 +11,7 @@ export default function ProfileModify() {
   const { user, setUser } = useAuth();
   const [usernameInput, setUsernameInput] = useState<string | undefined>(user?.username);
   const [emailInput, setEmailInput] = useState<string | undefined>(user?.email);
+  const [emailVerificationToken, setEmailVerificationToken] = useState("");
   const [phonenumberInput, setPhonenumberInput] = useState<string | undefined>(user?.phonenumber);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -55,7 +57,12 @@ export default function ProfileModify() {
         requestData.username = usernameInput;
       }
       if (emailInput !== user?.email) {
+        if (!emailVerificationToken) {
+          setErrorMessage("변경할 이메일의 인증을 완료해 주세요.");
+          return;
+        }
         requestData.email = emailInput;
+        requestData.emailVerificationToken = emailVerificationToken;
       }
       if (phonenumberInput !== user?.phonenumber) {
         requestData.phonenumber = phonenumberInput;
@@ -85,6 +92,7 @@ export default function ProfileModify() {
 
   const handleChangeEmailInput = (value: string) => {
     setEmailInput(value);
+    setEmailVerificationToken("");
   }
 
   const handleChangePhonenumberInput = (value: string) => {
@@ -126,6 +134,8 @@ export default function ProfileModify() {
             type="email"
             className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
           />
+          {emailInput !== user?.email && <EmailVerification key={emailInput} email={emailInput ?? ""}
+            onVerified={setEmailVerificationToken} />}
         </div>
 
         <div>

@@ -23,7 +23,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         if (exception.getBindingResult().getTarget() instanceof SignupRequest) {
             Map<String, String> errors = new LinkedHashMap<>();
-            for (String field : List.of("username", "password", "email", "phonenumber")) {
+            for (String field : List.of("username", "password", "email", "phonenumber", "emailVerificationToken")) {
                 var fieldError = exception.getBindingResult().getFieldError(field);
                 if (fieldError != null) {
                     errors.put(field, fieldError.getDefaultMessage());

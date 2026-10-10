@@ -27,6 +27,7 @@ export type SignupRequest = {
   password: string;
   email: string;
   phonenumber: string;
+  emailVerificationToken: string;
 };
 
 export type SignupResponse = {
@@ -48,6 +49,7 @@ export type UpdateMyInfoRequest = {
   username?: string;
   email?: string;
   phonenumber?: string;
+  emailVerificationToken?: string;
 };
 
 export type UpdateMyInfoResponse = {
