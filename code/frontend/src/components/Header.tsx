@@ -15,7 +15,7 @@ export default function Header() {
   ]
 
   return (
-    <header className="w-full bg-[#f6f6f6] border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <header className="w-full bg-[#f6f6f6] border-b border-gray-200 px-6 py-4 flex flex-wrap items-center justify-between gap-y-4">
 
       {/* 1. 왼쪽 영역: 햄버거 메뉴 & 로고 */}
       <div className="flex items-center space-x-5">
@@ -28,7 +28,7 @@ export default function Header() {
       </div>
 
       {/* 2. 중앙 영역: 네비게이션 링크 */}
-      <nav className="flex items-center text-[15px] font-medium text-gray-800">
+      <nav aria-label="공연 카테고리" className="order-3 flex w-full items-center overflow-x-auto text-[15px] font-medium text-gray-800 lg:order-none lg:w-auto">
         {navItems.map((item, index) => (
           <React.Fragment key={item.path}>
             <NavLink
@@ -55,6 +55,12 @@ export default function Header() {
 
       {/* 3. 오른쪽 영역: 아이콘 버튼들 */}
       <div className="flex items-center space-x-4 text-gray-400">
+        <Link to="/search" aria-label="공연 검색" className="flex h-11 w-11 items-center justify-center rounded hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#453eda]">
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+            <circle cx="10.5" cy="10.5" r="6.75" />
+            <path strokeLinecap="round" d="m16 16 4.5 4.5" />
+          </svg>
+        </Link>
         {/* 사람 (마이페이지) 아이콘 */}
         <Link to="/mypage">
           <button className="flex flex-col items-center hover:text-gray-700 transition-colors">

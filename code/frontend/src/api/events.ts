@@ -13,9 +13,9 @@ type EventQuery = {
   limit?: number;
 };
 
-export async function getEvents(category?: EventCategory) {
+export async function getEvents(category?: EventCategory, filters: { title?: string; region?: string } = {}) {
   const response = await api.get<EventListResponse>("/events", {
-    params: category ? { category } : undefined,
+    params: { ...filters, ...(category ? { category } : {}) },
   });
 
   return response.data.data.events;

@@ -61,10 +61,10 @@ class EventServiceTest {
                 101L, "오페라의 유령", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 "드림씨어터", "http://example.com/main.jpg", "musical", "최고의 뮤지컬"
         );
-        given(eventRepository.getEventsByCategory(null)).willReturn(List.of(dto));
+        given(eventRepository.searchEvents(null, null, null)).willReturn(List.of(dto));
 
         // when
-        EventListResponse response = eventService.getEvents(null);
+        EventListResponse response = eventService.getEvents(null, null, null);
 
         // then
         assertThat(response).isNotNull();
@@ -75,11 +75,8 @@ class EventServiceTest {
     @Test
     @DisplayName("이벤트 목록 조회 실패 - 유효하지 않은 카테고리")
     void getEvents_InvalidCategory_ThrowsApiException() {
-        // given
-        given(eventRepository.findAllCategories()).willReturn(List.of("musical", "concert"));
-
         // when & then
-        assertThatThrownBy(() -> eventService.getEvents("invalid_category"))
+        assertThatThrownBy(() -> eventService.getEvents("invalid_category", null, null))
                 .isInstanceOf(ApiException.class)
                 .extracting("code")
                 .isEqualTo("INVALID_EVENT_CATEGORY");

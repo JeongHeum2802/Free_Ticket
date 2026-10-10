@@ -28,9 +28,11 @@ public class EventController {
 
     @GetMapping
     public ApiResponse<EventListResponse> getEvents(
-            @RequestParam(name = "category", required = false) String category
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "title", required = false) String title,
+            @RequestParam(name = "region", required = false) String region
     ) {
-        EventListResponse response = eventService.getEvents(category);
+        EventListResponse response = eventService.getEvents(category, title, region);
         String message = response.events().isEmpty() ? "조회된 이벤트가 없습니다." : "이벤트 목록 조회에 성공했습니다.";
         return ApiResponse.success(message, response);
     }

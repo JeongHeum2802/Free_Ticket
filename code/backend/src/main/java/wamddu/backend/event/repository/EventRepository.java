@@ -18,8 +18,11 @@ public interface EventRepository extends JpaRepository<Event,Long> {
     @Query("SELECT new wamddu.backend.event.dto.response.EventSummaryResponse(" +
             "E.id, E.name, E.startDate, E.endDate, E.location, E.mainImageUrl, E.category, E.description ) " +
             "FROM Event E " +
-            "WHERE (:category IS NULL OR :category = E.category)")
-    List<EventSummaryResponse> getEventsByCategory(String category);
+            "WHERE (:category IS NULL OR :category = E.category) " +
+            "AND (:title IS NULL OR E.name LIKE :title ESCAPE '!') " +
+            "AND (:region IS NULL OR E.location LIKE :region ESCAPE '!') " +
+            "ORDER BY E.id DESC")
+    List<EventSummaryResponse> searchEvents(String category, String title, String region);
 
     @Query("SELECT new wamddu.backend.event.dto.response.WhatsHotEventResponse(" +
             "R.rankValue, E.id, E.name, E.startDate, E.endDate, E.location, E.bannerImageUrl, E.mainImageUrl, E.category) " +

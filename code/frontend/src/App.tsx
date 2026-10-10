@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // 기본 페이지
 import Homepage from './pages/Homepage';
+import SearchPage from './pages/SearchPage';
 import Loginpage from './pages/Loginpage';
 import TicketDetailPage from './pages/TicketDetailPage';
 import PaymentCheckoutPage from './pages/payment/PaymentCheckoutPage';
@@ -38,6 +39,7 @@ export default function App() {
       <Header />
       <Routes>
         <Route path="/" element={<Homepage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/concert" element={<ConcertPage />} />
         <Route path="/musical" element={<MusicalPage />} />
         <Route path="/play" element={<PlayPage />} />

@@ -14,32 +14,50 @@ import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.TicketRepository;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventService {
+    private static final Set<String> SEARCH_CATEGORIES = Set.of(
+            "concert", "musical", "play", "classic", "exhibition", "busking");
 
     private final EventRepository eventRepository;
     private final TicketRepository ticketRepository;
 
-    public EventListResponse getEvents(String category) {
+    public EventListResponse getEvents(String category, String title, String region) {
         log.debug("[SQL CHECK] GET /api/events START");
         try {
-            if (category != null) {
-                List<String> allCategories = eventRepository.findAllCategories();
-
-                if (!allCategories.contains(category)) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_CATEGORY", "유효하지 않은 이벤트 카테고리입니다.");
-                }
+            category = normalizeSearchValue(category);
+            title = normalizeSearchValue(title);
+            region = normalizeSearchValue(region);
+            if (category != null && !SEARCH_CATEGORIES.contains(category)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_CATEGORY", "유효하지 않은 이벤트 카테고리입니다.");
             }
 
-            List<EventSummaryResponse> allEvents = eventRepository.getEventsByCategory(category);
+            // shortcut: 주소 문자열로 지역을 찾는다. 주소 약칭이나 정확한 행정구역 구분이 필요하면 지역 코드를 도입한다.
+            List<EventSummaryResponse> allEvents = eventRepository.searchEvents(
+                    category, containsPattern(title), containsPattern(region));
             return new EventListResponse(allEvents);
         } finally {
             log.debug("[SQL CHECK] GET /api/events END");
         }
+    }
+
+    private String normalizeSearchValue(String value) {
+        if (value == null || value.isBlank()) return null;
+        String trimmed = value.strip();
+        if (trimmed.length() > 100) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SEARCH_VALUE", "검색 조건은 100자 이하로 입력해 주세요.");
+        }
+        return trimmed;
+    }
+
+    private String containsPattern(String value) {
+        if (value == null) return null;
+        return "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 
     public WhatsHotResponse whatshot(String category, Integer limit) {
