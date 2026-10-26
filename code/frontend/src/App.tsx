@@ -31,6 +31,7 @@ import BuskingPage from './pages/eventpage/BuskingPage';
 //// Components
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+import TicketChat from './components/TicketChat';
 
 
 export default function App() {
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="admin" element={<AdminDashboard />} />
         </Route>
       </Routes>
+      <TicketChat />
     </div>
   );
 }

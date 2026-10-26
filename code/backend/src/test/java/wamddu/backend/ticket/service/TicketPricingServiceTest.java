@@ -133,6 +133,8 @@ class TicketPricingServiceTest {
     @Test
     void firstAutomaticConfigurationStoresBaselineAndStartsObservation() {
         var ticket = ticket();
+        // configure uses the current time, unlike adjustPrice's explicit NOW.
+        ticket.setBookingEndtime(LocalDateTime.now().plusDays(3));
         ticket.setInitialPrice(null);
         ticket.setMinPrice(null);
         ticket.setSalesStartAt(null);
