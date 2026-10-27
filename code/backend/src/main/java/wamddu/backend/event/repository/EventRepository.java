@@ -8,6 +8,8 @@ import wamddu.backend.event.dto.response.EventSummaryResponse;
 import wamddu.backend.event.dto.response.WhatsHotEventResponse;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event,Long> {
@@ -23,6 +25,44 @@ public interface EventRepository extends JpaRepository<Event,Long> {
             "AND (:region IS NULL OR E.location LIKE :region ESCAPE '!') " +
             "ORDER BY E.id DESC")
     List<EventSummaryResponse> searchEvents(String category, String title, String region);
+
+    // One matching ticket must satisfy all conditions. EXISTS keeps each event unique.
+    // Active holds follow OrderRepository.sumActiveQuantity, including recovery states.
+    @Query("""
+            SELECT new wamddu.backend.event.dto.response.EventSummaryResponse(
+                E.id, E.name, E.startDate, E.endDate, E.location, E.mainImageUrl, E.category, E.description)
+            FROM Event E
+            WHERE (:category IS NULL OR E.category = :category)
+              AND (:title IS NULL OR E.name LIKE :title ESCAPE '!')
+              AND (:region IS NULL OR E.location LIKE :region ESCAPE '!')
+              AND EXISTS (
+                SELECT T.id FROM Ticket T WHERE T.event = E
+                  AND (:fromTime IS NULL OR T.start_time >= :fromTime)
+                  AND (:toTime IS NULL OR T.start_time < :toTime)
+                  AND (:maxPrice IS NULL OR (T.price >= 0 AND T.price <= :maxPrice))
+                  AND (:availableOnly = false OR (
+                    T.price >= 0 AND T.bookingEndtime > :now
+                    AND T.total_ticket - T.sold_ticket > (
+                      SELECT COALESCE(SUM(O.quantity), 0) FROM Order O
+                      WHERE O.ticket_id = T.id
+                        AND O.status IN (wamddu.backend.order.domain.OrderStatus.PENDING,
+                          wamddu.backend.order.domain.OrderStatus.CONFIRMING,
+                          wamddu.backend.order.domain.OrderStatus.CANCELING)
+                        AND (O.status <> wamddu.backend.order.domain.OrderStatus.CANCELING
+                          OR NOT EXISTS (SELECT P.id FROM Payment P WHERE P.order = O))
+                        AND (O.expiresAt > :now OR O.status IN (
+                          wamddu.backend.order.domain.OrderStatus.CONFIRMING,
+                          wamddu.backend.order.domain.OrderStatus.CANCELING))
+                    )
+                  ))
+              )
+            ORDER BY E.id DESC
+            """)
+    List<EventSummaryResponse> searchEventsWithTickets(
+            @Param("category") String category, @Param("title") String title, @Param("region") String region,
+            @Param("fromTime") LocalDateTime fromTime, @Param("toTime") LocalDateTime toTime,
+            @Param("maxPrice") Integer maxPrice, @Param("availableOnly") boolean availableOnly,
+            @Param("now") LocalDateTime now);
 
     @Query("SELECT new wamddu.backend.event.dto.response.WhatsHotEventResponse(" +
             "R.rankValue, E.id, E.name, E.startDate, E.endDate, E.location, E.bannerImageUrl, E.mainImageUrl, E.category) " +

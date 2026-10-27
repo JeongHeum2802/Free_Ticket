@@ -2,6 +2,9 @@ package wamddu.backend.event.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
+import wamddu.backend.event.dto.request.EventSearchCriteria;
 import wamddu.backend.event.dto.response.EventDetailResponse;
 import wamddu.backend.event.dto.response.EventListResponse;
 import wamddu.backend.event.dto.response.WeeklyRankingEventResponse;
@@ -30,9 +33,14 @@ public class EventController {
     public ApiResponse<EventListResponse> getEvents(
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "title", required = false) String title,
-            @RequestParam(name = "region", required = false) String region
+            @RequestParam(name = "region", required = false) String region,
+            @RequestParam(name = "dateFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(name = "dateTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(name = "maxPrice", required = false) Integer maxPrice,
+            @RequestParam(name = "availableOnly", required = false) Boolean availableOnly
     ) {
-        EventListResponse response = eventService.getEvents(category, title, region);
+        EventListResponse response = eventService.getEvents(
+                new EventSearchCriteria(category, title, region, dateFrom, dateTo, maxPrice, availableOnly));
         String message = response.events().isEmpty() ? "조회된 이벤트가 없습니다." : "이벤트 목록 조회에 성공했습니다.";
         return ApiResponse.success(message, response);
     }

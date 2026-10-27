@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import wamddu.backend.event.domain.Event;
+import wamddu.backend.event.dto.request.EventSearchCriteria;
 import wamddu.backend.event.dto.response.*;
 import wamddu.backend.event.repository.EventRepository;
 import wamddu.backend.global.exception.ApiException;
@@ -15,6 +16,8 @@ import wamddu.backend.ticket.repository.TicketRepository;
 
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -28,21 +31,48 @@ public class EventService {
     private final TicketRepository ticketRepository;
 
     public EventListResponse getEvents(String category, String title, String region) {
+        return getEvents(new EventSearchCriteria(category, title, region, null, null, null, null));
+    }
+
+    public EventListResponse getEvents(EventSearchCriteria criteria) {
         log.debug("[SQL CHECK] GET /api/events START");
         try {
-            category = normalizeSearchValue(category);
-            title = normalizeSearchValue(title);
-            region = normalizeSearchValue(region);
+            String category = normalizeSearchValue(criteria.category());
+            String title = normalizeSearchValue(criteria.title());
+            String region = normalizeSearchValue(criteria.region());
             if (category != null && !SEARCH_CATEGORIES.contains(category)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_CATEGORY", "유효하지 않은 이벤트 카테고리입니다.");
             }
 
             // shortcut: 주소 문자열로 지역을 찾는다. 주소 약칭이나 정확한 행정구역 구분이 필요하면 지역 코드를 도입한다.
-            List<EventSummaryResponse> allEvents = eventRepository.searchEvents(
-                    category, containsPattern(title), containsPattern(region));
+            validateTicketFilters(criteria);
+            List<EventSummaryResponse> allEvents;
+            if (criteria.hasTicketFilters()) {
+                allEvents = eventRepository.searchEventsWithTickets(
+                        category, containsPattern(title), containsPattern(region),
+                        criteria.dateFrom() == null ? null : criteria.dateFrom().atStartOfDay(),
+                        criteria.dateTo() == null ? null : criteria.dateTo().plusDays(1).atStartOfDay(),
+                        criteria.maxPrice(), Boolean.TRUE.equals(criteria.availableOnly()), LocalDateTime.now());
+            } else {
+                allEvents = eventRepository.searchEvents(category, containsPattern(title), containsPattern(region));
+            }
             return new EventListResponse(allEvents);
         } finally {
             log.debug("[SQL CHECK] GET /api/events END");
+        }
+    }
+
+    private void validateTicketFilters(EventSearchCriteria criteria) {
+        if (criteria.maxPrice() != null && criteria.maxPrice() < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MAX_PRICE", "최대 가격은 0원 이상이어야 합니다.");
+        }
+        // Keep dates within the database calendar range and allow an exclusive next-day upper bound.
+        LocalDate minDate = LocalDate.of(1000, 1, 1);
+        LocalDate maxDate = LocalDate.of(9999, 12, 30);
+        if ((criteria.dateFrom() != null && (criteria.dateFrom().isBefore(minDate) || criteria.dateFrom().isAfter(maxDate)))
+                || (criteria.dateTo() != null && (criteria.dateTo().isBefore(minDate) || criteria.dateTo().isAfter(maxDate)))
+                || (criteria.dateFrom() != null && criteria.dateTo() != null && criteria.dateFrom().isAfter(criteria.dateTo()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "유효한 날짜 범위를 입력해 주세요. 시작일은 종료일보다 늦을 수 없습니다.");
         }
     }
 
