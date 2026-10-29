@@ -221,7 +221,7 @@ class UserServiceTest {
 
         UpdateMyInfoRequest request = new UpdateMyInfoRequest("김철수", null, null, null);
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
         given(userRepository.save(any(User.class))).willReturn(user);
         given(eventDirectorRepository.existsByUserId(1L)).willReturn(true);
 
@@ -255,7 +255,7 @@ class UserServiceTest {
 
         ChangePasswordRequest request = new ChangePasswordRequest("password123!", "newPassword123!");
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("password123!", "encoded_password")).willReturn(true);
         given(passwordEncoder.matches("newPassword123!", "encoded_password")).willReturn(false);
         given(passwordEncoder.encode("newPassword123!")).willReturn("new_encoded_password");
@@ -278,7 +278,7 @@ class UserServiceTest {
 
         DeleteAccountRequest request = new DeleteAccountRequest("password123!");
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("password123!", "encoded_password")).willReturn(true);
 
         // when

@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/events/{eventId}/tickets/{ticketId}/price-history").permitAll()
                         .requestMatchers("/api/auth/email-verifications", "/api/auth/email-verifications/verify").permitAll()
+                        .requestMatchers("/api/auth/password-resets", "/api/auth/password-resets/email",
+                                "/api/auth/password-resets/email/verify").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/refresh", "/api/auth/logout",
                                 "/api/events/*", "/api/events").permitAll()
                         .anyRequest().authenticated()

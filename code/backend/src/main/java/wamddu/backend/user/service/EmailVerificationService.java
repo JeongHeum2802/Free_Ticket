@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.user.domain.EmailVerification;
+import wamddu.backend.user.domain.EmailVerification.Purpose;
 import wamddu.backend.user.repository.EmailVerificationRepository;
 
 @Service
@@ -42,6 +43,11 @@ public class EmailVerificationService {
 
     @Transactional
     public String send(String email) {
+        return send(email, Purpose.EMAIL_VERIFICATION);
+    }
+
+    @Transactional
+    public String send(String email, Purpose purpose) {
         JavaMailSender sender = mailSender.getIfAvailable();
         if (sender == null || from.isBlank() || mailPassword.isBlank()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "MAIL_NOT_CONFIGURED", "메일 발송 설정이 필요합니다.");
@@ -64,6 +70,7 @@ public class EmailVerificationService {
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
         verification.setEmail(email);
+        verification.setPurpose(purpose);
         verification.setTokenHash(hash(token));
         verification.setCodeHash(passwordEncoder.encode(code));
         verification.setExpiresAt(now.plusSeconds(300));
@@ -81,8 +88,9 @@ public class EmailVerificationService {
         var message = new SimpleMailMessage();
         message.setFrom(senderName + " <" + from + ">");
         message.setTo(email);
-        message.setSubject("[FreeTicket] 이메일 인증번호");
-        message.setText("FreeTicket 이메일 인증번호: " + code + "\n5분 이내에 입력해 주세요.\n요청하지 않았다면 이 메일을 무시해 주세요.");
+        String subject = purpose == Purpose.PASSWORD_RESET ? "비밀번호 재설정 인증번호" : "이메일 인증번호";
+        message.setSubject("[FreeTicket] " + subject);
+        message.setText("FreeTicket " + subject + ": " + code + "\n5분 이내에 입력해 주세요.\n요청하지 않았다면 이 메일을 무시해 주세요.");
         try {
             sender.send(message);
         } catch (MailException failure) {
@@ -94,7 +102,12 @@ public class EmailVerificationService {
     // Failed code attempts must survive the error response so guessing cannot reset the counter.
     @Transactional(noRollbackFor = ApiException.class)
     public void verify(String email, String token, String code) {
-        var verification = requireValid(email, token);
+        verify(email, token, code, Purpose.EMAIL_VERIFICATION);
+    }
+
+    @Transactional(noRollbackFor = ApiException.class)
+    public void verify(String email, String token, String code, Purpose purpose) {
+        var verification = requireValid(email, token, purpose);
         if (verification.getVerifiedAt() != null) return;
         if (verification.getFailedAttempts() >= 5) throw invalidProof();
         if (!passwordEncoder.matches(code, verification.getCodeHash())) {
@@ -107,16 +120,21 @@ public class EmailVerificationService {
     // Consume together with the account write: a failed signup must not lose its valid proof.
     @Transactional(propagation = Propagation.MANDATORY)
     public Instant consume(String email, String token) {
-        var verification = requireValid(email, token);
+        return consume(email, token, Purpose.EMAIL_VERIFICATION);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Instant consume(String email, String token, Purpose purpose) {
+        var verification = requireValid(email, token, purpose);
         if (verification.getVerifiedAt() == null) throw invalidProof();
         verification.setConsumedAt(Instant.now());
         return verification.getVerifiedAt();
     }
 
-    private EmailVerification requireValid(String email, String token) {
+    private EmailVerification requireValid(String email, String token, Purpose purpose) {
         if (token == null || token.length() != 43) throw invalidProof();
         var verification = repository.findForUpdate(normalizeEmail(email)).orElseThrow(EmailVerificationService::invalidProof);
-        if (!verification.getEmail().equals(normalizeEmail(email))
+        if (verification.getPurpose() != purpose || !verification.getEmail().equals(normalizeEmail(email))
                 || verification.getConsumedAt() != null || !verification.getExpiresAt().isAfter(Instant.now())
                 || !MessageDigest.isEqual(hash(token).getBytes(StandardCharsets.US_ASCII),
                     verification.getTokenHash().getBytes(StandardCharsets.US_ASCII))) throw invalidProof();

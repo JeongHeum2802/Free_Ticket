@@ -185,7 +185,7 @@ public class UserService {
     public UpdateMyInfoResponse updateMyInfo(UpdateMyInfoRequest request, UserDetails userDetails) {
         log.debug("[SQL CHECK] POST /api/users/me START");
         try {
-            User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+            User user = userRepository.findByIdForUpdate(Long.parseLong(userDetails.getUsername()))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
             if (user.getStatus() != UserStatus.ACTIVE) {
@@ -228,7 +228,7 @@ public class UserService {
     public MessageResponse updateMyPassword(ChangePasswordRequest request, UserDetails userDetails) {
         log.debug("[SQL CHECK] PATCH /api/users/me/password START");
         try {
-            User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+            User user = userRepository.findByIdForUpdate(Long.parseLong(userDetails.getUsername()))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
             if (user.getStatus() != UserStatus.ACTIVE) {
@@ -258,7 +258,7 @@ public class UserService {
     public MessageResponse deleteMyAccount(DeleteAccountRequest request, UserDetails userDetails) {
         log.debug("[SQL CHECK] DELETE /api/users/me START");
         try {
-            User user = userRepository.findById(Long.parseLong(userDetails.getUsername()))
+            User user = userRepository.findByIdForUpdate(Long.parseLong(userDetails.getUsername()))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
             if (user.getStatus() != UserStatus.ACTIVE) {

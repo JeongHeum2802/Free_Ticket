@@ -38,7 +38,7 @@ export default function SlidePosts({ slides }: SlidePostsProps) {
   const safeCurrentIndex = currentIndex % validSlides.length;
 
   return (
-    <section className="relative flex h-150 w-full items-center justify-center overflow-hidden bg-[#280f0f] text-white">
+    <section className="relative isolate flex h-150 w-full items-center justify-center overflow-hidden bg-[#280f0f] text-white">
       {validSlides.map((slide, index) => (
         <Link
           key={slide.id}

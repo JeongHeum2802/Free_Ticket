@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { signupApi } from "../api/auth";
 import EmailVerification from "../components/EmailVerification";
+import PasswordRecoveryDialog from "../components/PasswordRecoveryDialog";
 import { PRIVACY_CONSENT, SERVICE_TERMS } from '../constants/termsContent';
 
 import type { SignupRequest } from '../types/Auth';
@@ -239,76 +240,7 @@ export default function Loginpage() {
           </div>
         </div>
       )}
-      {isFindPasswordModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => setIsFindPasswordModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  비밀번호 재설정
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  가입할 때 사용한 이메일을 입력하면
-                  <br />
-                  비밀번호 재설정 페이지를 보내드립니다.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsFindPasswordModalOpen(false)}
-                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                aria-label="모달 닫기"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-7">
-              <label
-                htmlFor="reset-email"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
-                이메일
-              </label>
-
-              <input
-                id="reset-email"
-                type="email"
-                placeholder="example@email.com"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-black focus:ring-2 focus:ring-black/10"
-              />
-            </div>
-
-            <div className="mt-7 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsFindPasswordModalOpen(false)}
-                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                취소
-              </button>
-
-              <button
-                type="button"
-                className="flex-1 rounded-xl bg-black px-4 py-3 font-medium text-white transition hover:bg-gray-800"
-              >
-                재설정 페이지 전송
-              </button>
-            </div>
-
-            <p className="mt-5 text-center text-xs text-gray-400">
-              이메일이 도착하지 않으면 스팸 메일함을 확인해주세요.
-            </p>
-          </div>
-        </div>
-      )}
+      {isFindPasswordModalOpen && <PasswordRecoveryDialog onClose={() => setIsFindPasswordModalOpen(false)} />}
       {/* Main */}
       <main className="mx-auto mt-14 w-90">
         {/* Tabs */}
@@ -367,7 +299,7 @@ export default function Loginpage() {
           <div className="mt-5 flex items-center gap-3 text-sm text-gray-600">
             <button className="hover:text-blue-500">아이디 찾기</button>
             <span className="text-gray-300">|</span>
-            <button onClick={handleClickFindPassword} className="hover:text-blue-500">비밀번호 찾기</button>
+            <button type="button" onClick={event => { event.currentTarget.focus(); handleClickFindPassword(); }} className="hover:text-blue-500">비밀번호 찾기</button>
           </div>
         </form>)}
 

@@ -12,11 +12,16 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class EmailVerification {
+    public enum Purpose { EMAIL_VERIFICATION, PASSWORD_RESET }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(length = 254, nullable = false, unique = true)
     private String email;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(32)")
+    private Purpose purpose = Purpose.EMAIL_VERIFICATION;
     @Column(nullable = false, length = 64)
     private String tokenHash;
     @Column(nullable = false, length = 100)

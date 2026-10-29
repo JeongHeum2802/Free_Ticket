@@ -14,5 +14,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhonenumber(String phonenumber);
     Optional<User> findById(Long id);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     User findByEmail(String email);
 }

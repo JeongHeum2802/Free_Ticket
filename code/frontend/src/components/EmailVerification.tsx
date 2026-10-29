@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import axios from "axios";
 import { sendEmailVerification, verifyEmail } from "../api/emailVerification";
+import { sendPasswordRecovery, verifyPasswordRecovery } from "../api/passwordRecovery";
 
-export default function EmailVerification({ email, onVerified }: {
+export default function EmailVerification({ email, onVerified, purpose = "email" }: {
   email: string;
   onVerified: (token: string) => void;
+  purpose?: "email" | "password-reset";
 }) {
   const [token, setToken] = useState("");
   const [code, setCode] = useState("");
@@ -31,7 +33,7 @@ export default function EmailVerification({ email, onVerified }: {
     onVerified("");
     setMessage("");
     try {
-      const result = await sendEmailVerification(email);
+      const result = await (purpose === "password-reset" ? sendPasswordRecovery : sendEmailVerification)(email);
       if (!active.current) return;
       setToken(result.verificationToken);
       setCode("");
@@ -46,7 +48,7 @@ export default function EmailVerification({ email, onVerified }: {
   async function verify() {
     setBusy(true);
     try {
-      const result = await verifyEmail(email, token, code);
+      const result = await (purpose === "password-reset" ? verifyPasswordRecovery : verifyEmail)(email, token, code);
       if (!active.current) return;
       setVerified(true);
       onVerified(token);

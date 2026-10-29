@@ -20,6 +20,7 @@ CREATE TABLE `users` (
 CREATE TABLE email_verifications (
     id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
     email varchar(254) NOT NULL UNIQUE,
+    purpose varchar(32) NOT NULL DEFAULT 'EMAIL_VERIFICATION',
     token_hash varchar(64) NOT NULL,
     code_hash varchar(100) NOT NULL,
     expires_at datetime(6) NOT NULL,
