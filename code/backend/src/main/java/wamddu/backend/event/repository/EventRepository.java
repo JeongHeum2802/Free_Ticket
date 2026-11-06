@@ -2,6 +2,8 @@ package wamddu.backend.event.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import wamddu.backend.event.domain.Event;
 import wamddu.backend.event.dto.response.EventSummaryResponse;
@@ -22,9 +24,8 @@ public interface EventRepository extends JpaRepository<Event,Long> {
             "FROM Event E " +
             "WHERE (:category IS NULL OR :category = E.category) " +
             "AND (:title IS NULL OR E.name LIKE :title ESCAPE '!') " +
-            "AND (:region IS NULL OR E.location LIKE :region ESCAPE '!') " +
-            "ORDER BY E.id DESC")
-    List<EventSummaryResponse> searchEvents(String category, String title, String region);
+            "AND (:region IS NULL OR E.location LIKE :region ESCAPE '!')")
+    Slice<EventSummaryResponse> searchEvents(String category, String title, String region, Pageable pageable);
 
     // One matching ticket must satisfy all conditions. EXISTS keeps each event unique.
     // Active holds follow OrderRepository.sumActiveQuantity, including recovery states.
@@ -56,13 +57,12 @@ public interface EventRepository extends JpaRepository<Event,Long> {
                     )
                   ))
               )
-            ORDER BY E.id DESC
             """)
-    List<EventSummaryResponse> searchEventsWithTickets(
+    Slice<EventSummaryResponse> searchEventsWithTickets(
             @Param("category") String category, @Param("title") String title, @Param("region") String region,
             @Param("fromTime") LocalDateTime fromTime, @Param("toTime") LocalDateTime toTime,
             @Param("maxPrice") Integer maxPrice, @Param("availableOnly") boolean availableOnly,
-            @Param("now") LocalDateTime now);
+            @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("SELECT new wamddu.backend.event.dto.response.WhatsHotEventResponse(" +
             "R.rankValue, E.id, E.name, E.startDate, E.endDate, E.location, E.bannerImageUrl, E.mainImageUrl, E.category) " +

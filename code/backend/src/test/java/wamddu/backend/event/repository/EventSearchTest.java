@@ -113,7 +113,8 @@ class EventSearchTest {
         Event match = event("matching");
         ticket(match, "2030-05-04T20:00:00", 50000);
         event("no tickets");
-        var mvc = MockMvcBuilders.standaloneSetup(new EventController(service))
+        var mvc = MockMvcBuilders.standaloneSetup(new EventController(service,
+                        org.mockito.Mockito.mock(wamddu.backend.event.service.EventListCache.class)))
                 .setControllerAdvice(new ApiExceptionHandler()).build();
         mvc.perform(get("/api/events").param("category", "musical"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.events.length()").value(2));

@@ -2,6 +2,10 @@ package wamddu.backend.event.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,27 @@ public class EventService {
     }
 
     public EventListResponse getEvents(EventSearchCriteria criteria) {
+        return new EventListResponse(searchEvents(criteria, Pageable.unpaged(Sort.by(Sort.Direction.DESC, "id"))).getContent());
+    }
+
+    public EventPageResponse getEventPage(EventSearchCriteria criteria, int page, int size, String sort) {
+        validatePagination(page, size, sort);
+        Sort order = Sort.by(Sort.Direction.DESC, "id");
+        if ("closingSoon".equals(sort)) {
+            order = Sort.by(Sort.Direction.ASC, "endDate").and(order);
+        }
+        Slice<EventSummaryResponse> events = searchEvents(criteria, PageRequest.of(page, size, order));
+        return new EventPageResponse(events.getContent(), page, size, events.hasNext());
+    }
+
+    public static void validatePagination(int page, int size, String sort) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE
+                || !("latest".equals(sort) || "closingSoon".equals(sort))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PAGINATION", "유효한 페이지, 크기(1~100), 정렬 조건을 입력해 주세요.");
+        }
+    }
+
+    private Slice<EventSummaryResponse> searchEvents(EventSearchCriteria criteria, Pageable pageable) {
         log.debug("[SQL CHECK] GET /api/events START");
         try {
             String category = normalizeSearchValue(criteria.category());
@@ -46,17 +71,14 @@ public class EventService {
 
             // shortcut: 주소 문자열로 지역을 찾는다. 주소 약칭이나 정확한 행정구역 구분이 필요하면 지역 코드를 도입한다.
             validateTicketFilters(criteria);
-            List<EventSummaryResponse> allEvents;
             if (criteria.hasTicketFilters()) {
-                allEvents = eventRepository.searchEventsWithTickets(
+                return eventRepository.searchEventsWithTickets(
                         category, containsPattern(title), containsPattern(region),
                         criteria.dateFrom() == null ? null : criteria.dateFrom().atStartOfDay(),
                         criteria.dateTo() == null ? null : criteria.dateTo().plusDays(1).atStartOfDay(),
-                        criteria.maxPrice(), Boolean.TRUE.equals(criteria.availableOnly()), LocalDateTime.now());
-            } else {
-                allEvents = eventRepository.searchEvents(category, containsPattern(title), containsPattern(region));
+                        criteria.maxPrice(), Boolean.TRUE.equals(criteria.availableOnly()), LocalDateTime.now(), pageable);
             }
-            return new EventListResponse(allEvents);
+            return eventRepository.searchEvents(category, containsPattern(title), containsPattern(region), pageable);
         } finally {
             log.debug("[SQL CHECK] GET /api/events END");
         }

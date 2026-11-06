@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wamddu.backend.event.dto.response.WhatsHotEventResponse;
 import wamddu.backend.event.dto.response.WhatsHotResponse;
 import wamddu.backend.event.service.EventService;
+import wamddu.backend.event.service.EventListCache;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,7 +24,7 @@ class EventControllerHotCacheTest {
             Thread.sleep(100);
             return expected;
         });
-        var controller = new EventController(service);
+        var controller = new EventController(service, mock(EventListCache.class));
         var start = new CountDownLatch(1);
         try (var workers = Executors.newFixedThreadPool(20)) {
             List<Callable<WhatsHotResponse>> requests = java.util.stream.IntStream.range(0, 20)
@@ -48,7 +49,7 @@ class EventControllerHotCacheTest {
         var late = new WhatsHotEventResponse(1L, 1L, "late", LocalDate.of(2026, 9, 1),
                 LocalDate.of(2026, 12, 1), "Seoul", "banner-1", "poster-1", "musical");
         when(service.whatshot("musical", 5)).thenReturn(new WhatsHotResponse("musical", List.of(early, late)));
-        var controller = new EventController(service);
+        var controller = new EventController(service, mock(EventListCache.class));
 
         controller.whatshot("musical", 5);
         var ranking = controller.getWeeklyRanking("musical", 5).getData();

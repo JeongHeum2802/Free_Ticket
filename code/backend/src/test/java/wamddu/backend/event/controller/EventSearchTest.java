@@ -31,6 +31,30 @@ class EventSearchTest {
     }
 
     @Test
+    void defaultListReturnsOnlyThirtyEventsAndExposesTheNextPage() throws Exception {
+        for (int i = 0; i < 31; i++) event("추가 공연 " + i, "서울", "concert");
+        mvc.perform(get("/api/events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.events.length()").value(30))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(30))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+        mvc.perform(get("/api/events").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.events.length()").value(5))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    void rejectsInvalidPaginationBeforeLoadingEvents() throws Exception {
+        for (String[] parameter : new String[][]{{"page", "-1"}, {"size", "0"}, {"size", "101"},
+                {"page", "2147483647"}, {"sort", "unknown"}}) {
+            mvc.perform(get("/api/events").param(parameter[0], parameter[1]))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
     void anonymousSearchCombinesTitleRegionAndCategory() throws Exception {
         mvc.perform(get("/api/events").param("title", "  여름밤  ")
                         .param("region", " 여수시 ").param("category", "concert"))

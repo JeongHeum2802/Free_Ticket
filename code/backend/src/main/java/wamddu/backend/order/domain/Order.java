@@ -7,7 +7,7 @@ import wamddu.backend.user.domain.User;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = @Index(name = "idx_orders_ticket_id", columnList = "ticket_id"))
 @Getter
 @Setter
 @Builder

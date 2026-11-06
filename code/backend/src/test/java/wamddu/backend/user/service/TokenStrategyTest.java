@@ -51,6 +51,7 @@ class TokenStrategyTest {
     @Autowired PasswordEncoder encoder;
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired RefreshTokenStore refreshTokens;
     User user;
 
     @BeforeEach
@@ -87,6 +88,37 @@ class TokenStrategyTest {
     @Test
     void accessCannotObtainARefreshToken() {
         rejectedRefresh(login().response().getAccessToken());
+    }
+
+    @Test
+    void expiredSignedRefreshIsRejectedWhileItsStoredRowStillExists() {
+        String family = UUID.randomUUID().toString();
+        Instant expiredAt = Instant.now().minusSeconds(60);
+        String expired = Jwts.builder().subject(user.getId().toString()).claim("token_use", "refresh")
+                .claim("family_id", family).id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(expiredAt.minusSeconds(60))).expiration(Date.from(expiredAt))
+                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();
+        refreshTokens.save(family, user.getId(), expired, expiredAt);
+
+        rejectedRefresh(expired);
+
+        assertThat(jdbc.queryForObject("select count(*) from refresh_tokens where id = ?", Long.class, family))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void persistedExpiryRejectsARefreshEvenWhenItsJwtIsStillValid() {
+        String original = login().refreshToken();
+        String family = claims(original).get("family_id", String.class);
+        jdbc.update("update refresh_tokens set expires_at = ? where id = ?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(60)), family);
+        assertThat(jdbc.queryForObject("select count(*) from refresh_tokens where id = ?", Long.class, family))
+                .isEqualTo(1);
+
+        rejectedRefresh(original);
+
+        assertThat(jdbc.queryForObject("select count(*) from refresh_tokens where id = ?", Long.class, family))
+                .isZero();
     }
 
     @Test

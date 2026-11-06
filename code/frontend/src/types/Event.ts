@@ -46,11 +46,16 @@ export type TicketOption = {
   bookingAvailable: boolean;
 };
 
+export type EventPage = {
+  events: EventSummary[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+};
+
 export type EventListResponse = {
   message: string;
-  data: {
-    events: EventSummary[];
-  };
+  data: EventPage;
 };
 
 export type RankedEventsResponse<TEvent extends WeeklyRankedEvent> = {

@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,13 @@ public class RefreshTokenStore {
     private final RefreshTokenRepository repository;
 
     public void save(String familyId, Long userId, String token, Instant expiresAt) {
-        // shortcut: cleanup on login; batch expiry cleanup if the delete becomes too slow.
-        repository.deleteExpired(Instant.now());
         repository.save(new RefreshToken(familyId, userId, hash(token), expiresAt));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int cleanupExpired(Instant cutoff) {
+        var ids = repository.findExpiredIds(cutoff, PageRequest.of(0, 1000, Sort.by("expiresAt", "id")));
+        return ids.isEmpty() ? 0 : repository.deleteExpiredByIds(ids, cutoff);
     }
 
     // Commit replay revocation even when the caller subsequently throws a 401 ApiException.

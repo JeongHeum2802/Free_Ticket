@@ -13,12 +13,16 @@ type EventQuery = {
   limit?: number;
 };
 
-export async function getEvents(category?: EventCategory, filters: { title?: string; region?: string } = {}) {
+export async function getEvents(
+  category?: EventCategory,
+  filters: { title?: string; region?: string } = {},
+  { page = 0, size = 30, sort = "latest" }: { page?: number; size?: number; sort?: "latest" | "closingSoon" } = {},
+) {
   const response = await api.get<EventListResponse>("/events", {
-    params: { ...filters, ...(category ? { category } : {}) },
+    params: { ...filters, ...(category ? { category } : {}), page, size, sort },
   });
 
-  return response.data.data.events;
+  return response.data.data;
 }
 
 export async function getWhatsHot({ category, limit }: EventQuery = {}) {

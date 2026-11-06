@@ -13,7 +13,8 @@ CREATE TABLE `users` (
                          `role` enum('ADMIN','DIRECTOR','USER') NOT NULL,
                          `status` enum('ACTIVE','INACTIVE','DELETED') NOT NULL,
                          PRIMARY KEY (`id`),
-                         UNIQUE KEY `UK6dotkott2kjsp8vw4d0m25fb7` (`email`)
+                         UNIQUE KEY `UK6dotkott2kjsp8vw4d0m25fb7` (`email`),
+                         KEY `idx_users_phonenumber` (`phonenumber`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2
   DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -37,7 +38,9 @@ CREATE TABLE refresh_tokens (
     user_id BIGINT NOT NULL,
     token_hash VARCHAR(64) NOT NULL,
     expires_at DATETIME(6) NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    KEY idx_refresh_tokens_expires_at (expires_at),
+    KEY idx_refresh_tokens_user_id (user_id)
 );
 
 CREATE TABLE `events` (
@@ -122,6 +125,7 @@ CREATE TABLE `orders` (
                           PRIMARY KEY (`id`),
                           UNIQUE KEY `UKhmsk25beh6atojvle1xuymjj0` (`order_id`),
                           UNIQUE KEY `uk_orders_idempotency_key` (`idempotency_key`),
+                          KEY `idx_orders_ticket_id` (`ticket_id`),
                           CONSTRAINT `FK32ql8ubntj5uh44ph9659tiih`
                               FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6

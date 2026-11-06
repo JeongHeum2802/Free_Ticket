@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
+import wamddu.backend.event.service.EventListCache;
 import wamddu.backend.global.exception.ApiException;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ public class AdminTableService {
     private static final List<String> TABLES = List.of(
             "users", "events", "event_directors", "tickets", "ticket_price_history", "orders", "payments");
     private final JdbcTemplate jdbc;
+    private final EventListCache eventListCache;
 
     public List<String> tables() {
         return jdbc.execute((ConnectionCallback<List<String>>) connection -> {
@@ -187,7 +189,9 @@ public class AdminTableService {
             }
             long total = jdbc.queryForObject("SELECT COUNT(*) FROM " + quote(table), Long.class);
             int lastPage = (int) Math.max(0, (total - 1) / size);
-            return read(table, creations.isEmpty() ? Math.min(page, lastPage) : lastPage, size);
+            var result = read(table, creations.isEmpty() ? Math.min(page, lastPage) : lastPage, size);
+            if (table.equals("events")) eventListCache.invalidateAfterCommit();
+            return result;
         } catch (DataIntegrityViolationException ex) {
             throw invalidUpdate("저장할 수 없습니다. 필수 값·중복 값·참조 ID를 확인해 주세요. 다른 데이터가 참조하는 행은 삭제할 수 없습니다.");
         } catch (IllegalArgumentException | java.time.DateTimeException ex) {
@@ -258,7 +262,9 @@ public class AdminTableService {
                 }
                 jdbc.update("UPDATE " + quote(table) + " SET " + assignments + " WHERE id = ?", parameters.toArray());
             }
-            return read(table, page, size);
+            var result = read(table, page, size);
+            if (table.equals("events")) eventListCache.invalidateAfterCommit();
+            return result;
         } catch (DataIntegrityViolationException ex) {
             throw invalidUpdate("저장할 수 없습니다. 필수 값, 중복 값, 참조 ID와 데이터 형식을 확인해 주세요.");
         } catch (IllegalArgumentException | java.time.DateTimeException ex) {

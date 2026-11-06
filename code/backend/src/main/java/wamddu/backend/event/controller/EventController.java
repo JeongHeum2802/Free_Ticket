@@ -3,18 +3,22 @@ package wamddu.backend.event.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import java.time.LocalDate;
 import wamddu.backend.event.dto.request.EventSearchCriteria;
 import wamddu.backend.event.dto.response.EventDetailResponse;
-import wamddu.backend.event.dto.response.EventListResponse;
+import wamddu.backend.event.dto.response.EventPageResponse;
 import wamddu.backend.event.dto.response.WeeklyRankingEventResponse;
 import wamddu.backend.event.dto.response.WeeklyRankingResponse;
 import wamddu.backend.event.dto.response.WhatsHotResponse;
 import wamddu.backend.event.service.EventService;
+import wamddu.backend.event.service.EventListCache;
 import wamddu.backend.global.response.ApiResponse;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/events")
@@ -22,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 public class EventController {
 
     private final EventService eventService;
+    private final EventListCache eventListCache;
+    private static final Set<String> CACHE_CATEGORIES = Set.of("concert", "musical", "play", "classic", "exhibition", "busking");
     private static final long HOT_CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(5);
     // ponytail: 서버별 캐시다. 여러 서버에서 같은 갱신 시점이 필요해지면 공유 캐시를 검토한다.
     private final ConcurrentHashMap<HotKey, HotEntry> hotCache = new ConcurrentHashMap<>();
@@ -30,17 +36,31 @@ public class EventController {
     private record HotEntry(WhatsHotResponse response, long loadedAtNanos) {}
 
     @GetMapping
-    public ApiResponse<EventListResponse> getEvents(
+    public ResponseEntity<?> getEvents(
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "title", required = false) String title,
             @RequestParam(name = "region", required = false) String region,
             @RequestParam(name = "dateFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(name = "dateTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(name = "maxPrice", required = false) Integer maxPrice,
-            @RequestParam(name = "availableOnly", required = false) Boolean availableOnly
+            @RequestParam(name = "availableOnly", required = false) Boolean availableOnly,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "30") int size,
+            @RequestParam(name = "sort", defaultValue = "latest") String sort
     ) {
-        EventListResponse response = eventService.getEvents(
-                new EventSearchCriteria(category, title, region, dateFrom, dateTo, maxPrice, availableOnly));
+        EventService.validatePagination(page, size, sort);
+        var criteria = new EventSearchCriteria(category, title, region, dateFrom, dateTo, maxPrice, availableOnly);
+        if ((category == null || CACHE_CATEGORIES.contains(category)) && title == null && region == null && dateFrom == null && dateTo == null
+                && maxPrice == null && availableOnly == null && eventListCache.isEnabled()) {
+            String field = (category == null ? "all" : category) + ":" + sort + ":" + page + ":" + size;
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(eventListCache.getOrLoad(field, () -> loadEvents(criteria, page, size, sort)));
+        }
+        return ResponseEntity.ok(loadEvents(criteria, page, size, sort));
+    }
+
+    private ApiResponse<EventPageResponse> loadEvents(EventSearchCriteria criteria, int page, int size, String sort) {
+        EventPageResponse response = eventService.getEventPage(criteria, page, size, sort);
         String message = response.events().isEmpty() ? "조회된 이벤트가 없습니다." : "이벤트 목록 조회에 성공했습니다.";
         return ApiResponse.success(message, response);
     }

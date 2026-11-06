@@ -9,6 +9,8 @@ services:
       DB_URL: jdbc:mysql://mysql-db:3306/free_ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_JPA_SHOW_SQL: "false"
+      EVENT_LIST_CACHE_ENABLED: "true"
+      REDIS_HOST: redis
       LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVLET_DISPATCHERSERVLET: INFO
       SERVICE_LOG_LEVEL: INFO
@@ -16,6 +18,19 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   mysql-db:
     image: mysql:8.0

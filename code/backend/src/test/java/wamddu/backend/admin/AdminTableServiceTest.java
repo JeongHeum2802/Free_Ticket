@@ -4,9 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import wamddu.backend.event.service.EventListCache;
 import wamddu.backend.global.exception.ApiException;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class AdminTableServiceTest {
     private AdminTableService service;
@@ -21,7 +23,7 @@ class AdminTableServiceTest {
         jdbc.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, username VARCHAR(100), password VARCHAR(100))");
         jdbc.execute("CREATE TABLE events (id BIGINT PRIMARY KEY, name VARCHAR(100))");
         jdbc.update("INSERT INTO users VALUES (2, 'second', 'secret2'), (1, 'first', 'secret1')");
-        service = new AdminTableService(jdbc);
+        service = new AdminTableService(jdbc, mock(EventListCache.class));
     }
 
     @Test

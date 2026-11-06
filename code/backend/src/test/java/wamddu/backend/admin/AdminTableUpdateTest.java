@@ -10,11 +10,13 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import wamddu.backend.event.service.EventListCache;
 import wamddu.backend.global.exception.ApiException;
 
 import javax.sql.DataSource;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @SpringJUnitConfig(AdminTableUpdateTest.Config.class)
 class AdminTableUpdateTest {
@@ -25,14 +27,19 @@ class AdminTableUpdateTest {
                 "jdbc:h2:mem:admin_update;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", ""); }
         @Bean JdbcTemplate jdbc(DataSource ds) { return new JdbcTemplate(ds); }
         @Bean DataSourceTransactionManager transactionManager(DataSource ds) { return new DataSourceTransactionManager(ds); }
-        @Bean AdminTableService service(JdbcTemplate jdbc) { return new AdminTableService(jdbc); }
+        @Bean EventListCache eventListCache() { return mock(EventListCache.class); }
+        @Bean AdminTableService service(JdbcTemplate jdbc, EventListCache eventListCache) {
+            return new AdminTableService(jdbc, eventListCache);
+        }
     }
     @Autowired AdminTableService service;
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSourceTransactionManager transactionManager;
+    @Autowired EventListCache eventListCache;
 
     @BeforeEach
     void setup() {
+        reset(eventListCache);
         jdbc.execute("DROP ALL OBJECTS");
         jdbc.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, username VARCHAR(100) NOT NULL UNIQUE, phonenumber VARCHAR(100), password VARCHAR(100))");
         jdbc.update("INSERT INTO users VALUES (1, 'first', NULL, 'hash1'), (2, 'second', '010', 'hash2')");
@@ -42,6 +49,46 @@ class AdminTableUpdateTest {
         var original = new HashMap<String, String>(); original.put(column, before);
         var values = new HashMap<String, String>(); values.put(column, after);
         return new AdminTableService.RowChange(id, original, values);
+    }
+
+    @Test
+    void successfulEventCreateUpdateAndDeleteInvalidateTheListCache() {
+        jdbc.execute("CREATE TABLE events (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL)");
+        service.save("events", List.of(), List.of(Map.of("name", "first")), List.of(), 0, 100);
+        verify(eventListCache).invalidateAfterCommit();
+
+        clearInvocations(eventListCache);
+        service.update("events", List.of(change("1", "name", "first", "edited")), 0, 100);
+        verify(eventListCache).invalidateAfterCommit();
+
+        clearInvocations(eventListCache);
+        service.save("events", List.of(), List.of(),
+                List.of(new AdminTableService.RowDeletion("1", Map.of("id", "1", "name", "edited"))), 0, 100);
+        verify(eventListCache).invalidateAfterCommit();
+    }
+
+    @Test
+    void nonEventWritesLeaveTheEventListCacheAlone() {
+        service.update("users", List.of(change("1", "username", "first", "edited")), 0, 100);
+        service.save("users", List.of(change("1", "username", "edited", "saved")), List.of(), List.of(), 0, 100);
+
+        verifyNoInteractions(eventListCache);
+    }
+
+    @Test
+    void rejectedEventWritesDoNotRequestInvalidation() {
+        jdbc.execute("CREATE TABLE events (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)");
+        jdbc.update("INSERT INTO events(name) VALUES ('first')");
+
+        assertThatThrownBy(() -> service.update("events", List.of(change("1", "name", "stale", "edited")), 0, 100))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service.save("events", List.of(), List.of(Map.of("name", "first")), List.of(), 0, 100))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service.save("events", List.of(), List.of(),
+                List.of(new AdminTableService.RowDeletion("1", Map.of("id", "1", "name", "stale"))), 0, 100))
+                .isInstanceOf(ApiException.class);
+
+        verifyNoInteractions(eventListCache);
     }
 
     @Test

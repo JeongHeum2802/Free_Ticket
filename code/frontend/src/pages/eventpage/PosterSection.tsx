@@ -6,6 +6,8 @@ type PosterSectionProps = {
   title: string;
   events: EventSummary[];
   showMore?: boolean;
+  onMore?: () => void;
+  loadingMore?: boolean;
 };
 
 /*
@@ -56,6 +58,8 @@ export default function PosterSection({
   title,
   events,
   showMore = true,
+  onMore,
+  loadingMore = false,
 }: PosterSectionProps) {
   return (
     <section className="mx-auto w-full max-w-[1100px] px-6">
@@ -68,6 +72,8 @@ export default function PosterSection({
         {showMore && (
           <button
             type="button"
+            onClick={onMore}
+            disabled={loadingMore}
             className="
               border border-[#dddddd]
               bg-white
@@ -76,9 +82,10 @@ export default function PosterSection({
               transition-colors
               hover:border-[#222222]
               hover:text-[#222222]
+              disabled:cursor-wait disabled:opacity-50
             "
           >
-            더보기 +
+            {loadingMore ? "불러오는 중..." : "더보기 +"}
           </button>
         )}
       </header>

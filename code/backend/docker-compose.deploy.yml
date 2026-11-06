@@ -34,6 +34,8 @@ services:
       PAYMENT_RECONCILIATION_START_AT: ${PAYMENT_RECONCILIATION_START_AT:-}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_JPA_SHOW_SQL: "false"
+      EVENT_LIST_CACHE_ENABLED: "true"
+      REDIS_HOST: redis
       LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVLET_DISPATCHERSERVLET: INFO
       SERVICE_LOG_LEVEL: INFO
@@ -41,6 +43,18 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   mysql-db:

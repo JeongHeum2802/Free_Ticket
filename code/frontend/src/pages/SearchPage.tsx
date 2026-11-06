@@ -20,20 +20,34 @@ function SearchContent({ params, setParams }: { params: URLSearchParams; setPara
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [request, setRequest] = useState({ page: 0 });
 
   useEffect(() => {
     let active = true;
     getEvents(category ? category as EventCategory : undefined, {
       ...(title ? { title } : {}), ...(region ? { region } : {}),
-    }).then((result) => {
-      if (active) setEvents(result);
+    }, { page: request.page, size: 30, sort: "latest" }).then((result) => {
+      if (active) {
+        setEvents((previous) => request.page === 0 ? result.events : [...previous, ...result.events]);
+        setPage(result.page);
+        setHasNext(result.hasNext);
+      }
     }).catch(() => {
       if (active) setError(true);
     }).finally(() => {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [title, region, category]);
+  }, [title, region, category, request]);
+
+  function loadMore() {
+    if (loading) return;
+    setLoading(true);
+    setError(false);
+    setRequest({ page: page + 1 });
+  }
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,11 +98,11 @@ function SearchContent({ params, setParams }: { params: URLSearchParams; setPara
         </form>
       </section>
       <div aria-live="polite" aria-busy={loading}>
-        {loading && <p role="status" className="px-6 py-16 text-center text-[#666]">공연을 검색하고 있습니다.</p>}
-        {!loading && error && <p role="alert" className="px-6 py-16 text-center text-red-700">공연을 불러오지 못했습니다. 검색 버튼을 눌러 다시 시도해 주세요.</p>}
-        {!loading && !error && (
+        {loading && events.length === 0 && <p role="status" className="px-6 py-16 text-center text-[#666]">공연을 검색하고 있습니다.</p>}
+        {error && <p role="alert" className="px-6 py-16 text-center text-red-700">공연을 불러오지 못했습니다. {events.length > 0 ? "더보기 버튼을 눌러 다시 시도해 주세요." : "검색 버튼을 눌러 다시 시도해 주세요."}</p>}
+        {(events.length > 0 || (!loading && !error)) && (
           <>
-            <PosterSection title={`검색 결과 ${events.length}건`} events={events} showMore={false} />
+            <PosterSection title={`불러온 검색 결과 ${events.length}건`} events={events} showMore={hasNext} onMore={loadMore} loadingMore={loading} />
             {events.length === 0 && <div className="px-6 py-16 text-center">
               <p className="font-medium">검색 조건에 맞는 공연이 없습니다.</p>
               <p className="mt-2 text-sm text-[#666]">다른 제목을 입력하거나 지역과 카테고리를 변경해 보세요.</p>

@@ -7,6 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Sort;
 import wamddu.backend.event.domain.Event;
 import wamddu.backend.event.dto.response.*;
 import wamddu.backend.event.repository.EventRepository;
@@ -61,7 +64,8 @@ class EventServiceTest {
                 101L, "오페라의 유령", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 "드림씨어터", "http://example.com/main.jpg", "musical", "최고의 뮤지컬"
         );
-        given(eventRepository.searchEvents(null, null, null)).willReturn(List.of(dto));
+        given(eventRepository.searchEvents(null, null, null, Pageable.unpaged(Sort.by(Sort.Direction.DESC, "id"))))
+                .willReturn(new SliceImpl<>(List.of(dto)));
 
         // when
         EventListResponse response = eventService.getEvents(null, null, null);
