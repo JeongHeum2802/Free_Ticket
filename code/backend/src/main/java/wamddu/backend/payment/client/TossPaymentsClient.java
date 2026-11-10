@@ -24,6 +24,8 @@ import java.util.Map;
 @Component
 public class TossPaymentsClient {
     private static final Logger log = LoggerFactory.getLogger(TossPaymentsClient.class);
+    /** Toss answered 404 for a payment lookup: it has no payment with this key. */
+    public static final String PAYMENT_NOT_FOUND = "TOSS_PAYMENT_NOT_FOUND";
 
     private final RestClient restClient;
     private final RestClient transactionClient;
@@ -132,7 +134,10 @@ public class TossPaymentsClient {
             }
             return response;
         } catch (RestClientResponseException exception) {
-            // 404도 미승인 확정으로 해석하지 않는다. 원래 승인 요청이 진행 중일 수 있다.
+            // 404는 별도 코드로 구분만 한다. 한 번의 404로 미승인을 확정하지 않고, 판단은 복구 작업이 한다.
+            if (exception.getStatusCode().value() == 404) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, PAYMENT_NOT_FOUND, "토스에서 결제를 찾을 수 없습니다.");
+            }
             throw new ApiException(HttpStatus.BAD_GATEWAY, "TOSS_LOOKUP_FAILED", "토스 결제 상태 조회에 실패했습니다.");
         }
     }

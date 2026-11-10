@@ -32,6 +32,10 @@ import java.util.stream.Collectors;
 public class OrderService {
     private static final DateTimeFormatter ORDER_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final int PAYMENT_WINDOW_MINUTES = 10;
+    /** Unpaid quantity one user may hold on a ticket, so a single buyer cannot block a sale. */
+    static final int MAX_HELD_PER_USER = 10;
+    private static final List<OrderStatus> HOLDING_STATUSES =
+            List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING, OrderStatus.CANCELING);
 
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
@@ -56,8 +60,14 @@ public class OrderService {
                 throw new ApiException(HttpStatus.CONFLICT, "INVALID_TICKET_DATA", "티켓 판매 정보가 올바르지 않습니다.");
             }
 
-            long pendingQuantity = orderRepository.sumActiveQuantity(
-                    ticket.getId(), List.of(OrderStatus.PENDING, OrderStatus.CONFIRMING, OrderStatus.CANCELING), now);
+            // The ticket row lock above serializes this check, so concurrent orders cannot exceed the limit.
+            long heldByUser = orderRepository.sumActiveQuantityByUser(ticket.getId(), userId, HOLDING_STATUSES, now);
+            if (heldByUser + request.getQuantity() > MAX_HELD_PER_USER) {
+                throw new ApiException(HttpStatus.CONFLICT, "ORDER_LIMIT_EXCEEDED",
+                        "한 티켓은 결제 대기 중인 수량을 합쳐 " + MAX_HELD_PER_USER + "장까지 주문할 수 있습니다. 진행 중인 주문을 결제하거나 결제 시간이 지난 뒤 다시 시도해 주세요.");
+            }
+
+            long pendingQuantity = orderRepository.sumActiveQuantity(ticket.getId(), HOLDING_STATUSES, now);
             long remaining = (long) ticket.getTotal_ticket() - ticket.getSold_ticket() - pendingQuantity;
             if (remaining < request.getQuantity()) {
                 throw new ApiException(HttpStatus.CONFLICT, "TICKET_SOLD_OUT", "선택한 수량만큼 남은 티켓이 없습니다.");

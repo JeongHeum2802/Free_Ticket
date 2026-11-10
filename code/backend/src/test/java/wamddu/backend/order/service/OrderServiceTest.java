@@ -120,11 +120,11 @@ class OrderServiceTest {
         // given
         CreateOrderRequest request = new CreateOrderRequest();
         request.setTicketId(1L);
-        request.setQuantity(100); // 100개 요청, 잔여 수량 90개
+        request.setQuantity(5); // 5개 요청, 잔여 90개 중 88개는 다른 결제 대기 주문이 점유
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(ticketRepository.findByIdForUpdate(1L)).willReturn(Optional.of(ticket));
-        given(orderRepository.sumActiveQuantity(eq(1L), any(), any())).willReturn(0L);
+        given(orderRepository.sumActiveQuantity(eq(1L), any(), any())).willReturn(88L);
 
         // when & then
         assertThatThrownBy(() -> orderService.createOrder(request, 1L))

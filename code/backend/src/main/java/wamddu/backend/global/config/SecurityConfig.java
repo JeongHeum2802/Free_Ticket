@@ -1,10 +1,14 @@
 package wamddu.backend.global.config;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,9 +20,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
+import wamddu.backend.global.response.ErrorResponse;
 import wamddu.backend.global.security.JwtAuthenticationFilter;
 import wamddu.backend.global.security.JwtProvider;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,6 +36,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
+    private final ObjectMapper errorJson = new ObjectMapper();
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -59,7 +68,14 @@ public class SecurityConfig {
                 .httpBasic((basic) -> basic.disable())
                 .sessionManagement(
                         (session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint((request, response, exception) -> writeError(response,
+                                HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다."))
+                        .accessDeniedHandler((request, response, exception) -> writeError(response,
+                                HttpStatus.FORBIDDEN, "FORBIDDEN", "접근 권한이 없습니다.")))
                 .authorizeHttpRequests((auth) -> auth
+                        // Exceptions are re-dispatched to /error without the JWT; authorizing it would turn every error into 403.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/events/{eventId}/tickets/{ticketId}/price-history").permitAll()
@@ -77,6 +93,14 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    private void writeError(HttpServletResponse response, HttpStatus status, String code, String message)
+            throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(errorJson.writeValueAsString(ErrorResponse.of(code, message)));
     }
 
     @Bean

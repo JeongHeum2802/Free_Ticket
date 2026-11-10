@@ -1,6 +1,5 @@
 package wamddu.backend.user.service;
 
-import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,6 +9,7 @@ import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.user.domain.EmailVerification.Purpose;
 import wamddu.backend.user.domain.UserStatus;
 import wamddu.backend.user.repository.UserRepository;
+import wamddu.backend.user.validation.PasswordPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -21,11 +21,8 @@ public class PasswordRecoveryService {
 
     @Transactional
     public void reset(String email, String token, String password, String confirmation) {
-        if (password == null || password.codePointCount(0, password.length()) < 8
-                || password.getBytes(StandardCharsets.UTF_8).length > 72
-                || password.codePoints().anyMatch(c -> Character.isWhitespace(c) || Character.isSpaceChar(c)
-                        || Character.isISOControl(c) || c == 0xFEFF)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호는 공백 없이 8자 이상, 영문·숫자 기준 최대 72자로 입력해 주세요. 한글 등은 더 짧을 수 있습니다.");
+        if (!PasswordPolicy.isValid(password)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", PasswordPolicy.MESSAGE);
         }
         if (!password.equals(confirmation)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PASSWORD_MISMATCH", "비밀번호 확인이 일치하지 않습니다.");
