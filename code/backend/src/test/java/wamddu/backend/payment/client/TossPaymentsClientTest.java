@@ -77,8 +77,15 @@ class TossPaymentsClientTest {
     }
 
     @Test
-    void lookupFailureIsNotInterpretedAsAnUnpaidPayment() {
+    void lookupNotFoundIsReportedSeparatelyForTheRecoveryJobToJudge() {
         respond(404, "{\"code\":\"NOT_FOUND_PAYMENT\",\"message\":\"Not found\"}");
+        assertThatThrownBy(() -> client.getPayment("pay_1"))
+                .isInstanceOf(ApiException.class).extracting("code").isEqualTo(TossPaymentsClient.PAYMENT_NOT_FOUND);
+    }
+
+    @Test
+    void otherLookupFailuresAreNotInterpretedAsAnUnpaidPayment() {
+        respond(500, "{\"code\":\"FAILED_INTERNAL_SYSTEM_PROCESSING\",\"message\":\"Error\"}");
         assertThatThrownBy(() -> client.getPayment("pay_1"))
                 .isInstanceOf(ApiException.class).extracting("code").isEqualTo("TOSS_LOOKUP_FAILED");
     }

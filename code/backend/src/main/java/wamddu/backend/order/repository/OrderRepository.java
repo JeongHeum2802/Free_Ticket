@@ -44,6 +44,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("now") LocalDateTime now
     );
 
+    // Same hold rules as sumActiveQuantity, limited to one buyer.
+    @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O " +
+            "WHERE O.ticket_id = :ticketId AND O.user.id = :userId AND O.status IN :statuses " +
+            "AND (O.status <> wamddu.backend.order.domain.OrderStatus.CANCELING " +
+            "OR NOT EXISTS (SELECT P.id FROM Payment P WHERE P.order = O)) " +
+            "AND (O.expiresAt > :now OR O.status IN " +
+            "(wamddu.backend.order.domain.OrderStatus.CONFIRMING, wamddu.backend.order.domain.OrderStatus.CANCELING))")
+    Long sumActiveQuantityByUser(
+            @Param("ticketId") Long ticketId,
+            @Param("userId") Long userId,
+            @Param("statuses") Collection<OrderStatus> statuses,
+            @Param("now") LocalDateTime now
+    );
+
     List<Order> findAllByUserIdAndStatusOrderByPaidAtDesc(Long userId, OrderStatus status);
 
     @Query("SELECT COALESCE(SUM(O.quantity), 0) FROM Order O WHERE O.ticket_id = :ticketId " +

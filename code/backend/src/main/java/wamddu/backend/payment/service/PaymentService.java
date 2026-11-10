@@ -22,6 +22,7 @@ import wamddu.backend.payment.repository.PaymentRepository;
 import wamddu.backend.ticket.domain.Ticket;
 import wamddu.backend.ticket.repository.TicketRepository;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -34,6 +35,9 @@ public class PaymentService {
     private final TicketRepository ticketRepository;
     private final TossPaymentsClient tossPaymentsClient;
     private final PlatformTransactionManager transactionManager;
+
+    private static final int MISSING_PAYMENT_MIN_LOOKUPS = 3;
+    private static final Duration MISSING_PAYMENT_GRACE = Duration.ofMinutes(10);
 
     @Value("${payment.recovery.retry-delay-ms:120000}")
     private long recoveryRetryDelayMs = 120000;
@@ -407,6 +411,11 @@ public class PaymentService {
                 if (failure instanceof ApiException api && "PAYMENT_CANCELED".equals(api.getCode())) {
                     continue; // 취소 API와 DB 반영까지 완료한 결과다.
                 }
+                if (attempt != null && attempt.cancellationKey() == null && failure instanceof ApiException api
+                        && TossPaymentsClient.PAYMENT_NOT_FOUND.equals(api.getCode())
+                        && failMissingPayment(id, attempt.number(), transaction)) {
+                    continue;
+                }
                 log.warn("예약된 결제 복구 실패. orderPk={}, orderId={}, attempt={}", id,
                         attempt == null ? null : attempt.request().orderId(),
                         attempt == null ? null : attempt.number(), failure);
@@ -453,6 +462,37 @@ public class PaymentService {
         }
         return new RecoveryAttempt(order.getUser().getId(), new ConfirmPaymentRequest(
                 order.getPaymentKey(), order.getOrderId(), order.getTotalAmount()), order.getRecoveryAttempts(), null);
+    }
+
+    /**
+     * 토스가 결제 키를 모른다고 반복해서 답한 주문만 결제 실패로 확정해 재고를 푼다.
+     * 토스는 결제창이 열릴 때부터 키를 조회할 수 있으므로, 결제 기한과 유예 시간이 지나도록
+     * 계속 404라면 실제 결제가 존재할 가능성은 낮다. 다른 조회 실패는 승인 가능성이 있어 재고를 유지한다.
+     */
+    private boolean failMissingPayment(Long id, int attempt, TransactionTemplate transaction) {
+        try {
+            Boolean failed = transaction.execute(status -> {
+                Order order = orderRepository.findByIdForUpdate(id).orElse(null);
+                if (order == null || order.getStatus() != OrderStatus.CONFIRMING
+                        || order.getRecoveryAttempts() != attempt || attempt < MISSING_PAYMENT_MIN_LOOKUPS
+                        || order.getExpiresAt() == null
+                        || LocalDateTime.now().isBefore(order.getExpiresAt().plus(MISSING_PAYMENT_GRACE))
+                        || paymentRepository.findByOrderOrderId(order.getOrderId()).isPresent()) {
+                    return false;
+                }
+                order.setStatus(OrderStatus.PAYMENT_FAILED);
+                order.setNextRecoveryAt(null);
+                order.setRecoveryReviewRequired(false);
+                return true;
+            });
+            if (Boolean.TRUE.equals(failed)) {
+                log.warn("토스에 없는 결제 키로 확인되어 결제 실패 처리. orderPk={}, attempt={}", id, attempt);
+                return true;
+            }
+        } catch (RuntimeException failure) {
+            log.error("결제 실패 확정 저장 실패. 다음 주기에 다시 확인합니다. orderPk={}", id, failure);
+        }
+        return false;
     }
 
     private void recordRecoveryFailure(Long id, int attempt, TransactionTemplate transaction) {
