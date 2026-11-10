@@ -14,6 +14,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import wamddu.backend.global.response.ErrorResponse;
 import wamddu.backend.user.dto.request.SignupRequest;
+import wamddu.backend.user.validation.PasswordPolicy;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +60,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             }
             return ResponseEntity.badRequest()
                     .body(ErrorResponse.of("VALIDATION_ERROR", "입력값을 확인해 주세요.", errors));
+        }
+        // Same code and message as the password reset API, so clients can show the rule.
+        for (var fieldError : exception.getBindingResult().getFieldErrors()) {
+            if ("ValidPassword".equals(fieldError.getCode())) {
+                return ResponseEntity.badRequest()
+                        .body(ErrorResponse.of("INVALID_PASSWORD", PasswordPolicy.MESSAGE));
+            }
         }
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of("INVALID_REQUEST", "요청 값을 확인해 주세요."));

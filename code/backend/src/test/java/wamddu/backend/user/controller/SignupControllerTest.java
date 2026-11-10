@@ -69,7 +69,7 @@ class SignupControllerTest {
                 .andExpect(jsonPath("$.message").value("입력값을 확인해 주세요."))
                 .andExpect(jsonPath("$.errors", aMapWithSize(5)))
                 .andExpect(jsonPath("$.errors.username").value("사용자 이름은 2자 이상이어야 합니다."))
-                .andExpect(jsonPath("$.errors.password").value("비밀번호는 8자 이상이어야 합니다."))
+                .andExpect(jsonPath("$.errors.password").value(wamddu.backend.user.validation.PasswordPolicy.MESSAGE))
                 .andExpect(jsonPath("$.errors.email").value("올바른 이메일 형식이 아닙니다."))
                 .andExpect(jsonPath("$.errors.phonenumber").value("올바른 전화번호 형식이 아닙니다."));
         verifyNoInteractions(userService);

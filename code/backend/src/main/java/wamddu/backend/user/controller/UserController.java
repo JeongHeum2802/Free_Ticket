@@ -68,14 +68,14 @@ public class UserController {
 
     @PatchMapping("/api/users/me/password")
     public ResponseEntity<MessageResponse> updateMyPassword(
-            @RequestBody ChangePasswordRequest request,
+            @Valid @RequestBody ChangePasswordRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.updateMyPassword(request, userDetails));
     }
 
     @DeleteMapping("/api/users/me")
     public ResponseEntity<MessageResponse> deleteMyAccount(
-            @RequestBody DeleteAccountRequest request,
+            @Valid @RequestBody DeleteAccountRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         MessageResponse response = userService.deleteMyAccount(request, userDetails);
         ResponseCookie cookie = createExpiredRefreshTokenCookie();
