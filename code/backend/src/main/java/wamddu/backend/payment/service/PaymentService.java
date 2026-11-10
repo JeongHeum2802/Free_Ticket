@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestClientException;
 import wamddu.backend.global.exception.ApiException;
 import wamddu.backend.order.domain.Order;
 import wamddu.backend.order.domain.OrderStatus;
@@ -182,8 +183,15 @@ public class PaymentService {
             }
 
             //토스 외부 승인 요청
-            TossPaymentsClient.TossPaymentResponse toss = tossPaymentsClient.confirm(
-                    request.paymentKey(), request.orderId(), request.amount(), preparedOrder.getIdempotencyKey());
+            TossPaymentsClient.TossPaymentResponse toss;
+            try {
+                toss = tossPaymentsClient.confirm(
+                        request.paymentKey(), request.orderId(), request.amount(), preparedOrder.getIdempotencyKey());
+            } catch (RestClientException unknownOutcome) {
+                // 타임아웃·연결 오류는 승인 여부를 알 수 없다. CONFIRMING으로 남겨 복구 스케줄러가 확정한다.
+                log.warn("토스 승인 결과 미확인. 복구 대기. orderId={}", request.orderId(), unknownOutcome);
+                throw recoveryPending(unknownOutcome);
+            }
 
             //트랜잭션 B
             try {
